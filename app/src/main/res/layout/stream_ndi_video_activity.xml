@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+												   xmlns:app="http://schemas.android.com/apk/res-auto"
+												   xmlns:tools="http://schemas.android.com/tools"
+												   android:layout_width="match_parent"
+												   android:layout_height="match_parent"
+												   tools:context=".StreamNDIVideoActivity">
+	<de.daubli.ndimonitor.view.NdiVideoView
+			android:visibility="invisible"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:id="@+id/ndiVideoView"/>
+	<com.google.android.material.floatingactionbutton.FloatingActionButton
+			android:id="@+id/regular_fab"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			app:tint="#000"
+			app:backgroundTint="@android:color/white"
+			android:layout_margin="16dp"
+			android:src="@android:drawable/ic_menu_close_clear_cancel"
+			app:layout_constraintTop_toTopOf="parent"
+			app:layout_constraintEnd_toEndOf="parent"/>
+</androidx.constraintlayout.widget.ConstraintLayout>
