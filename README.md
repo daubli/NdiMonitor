@@ -1,6 +1,10 @@
 # NdiMonitor
 
-Android App to view [NDI®](http://ndi.tv/)-Stream on a mobile phone. 
+Android App to view an [NDI®](http://ndi.tv/)-Stream on a mobile phone. 
+
+# State of this project 
+
+This app is in a very early development phase. Therefore it is not fully tested. It is possible that the app does not work stable and that there are some ui or- performance glitches. 
 
 # License
 
