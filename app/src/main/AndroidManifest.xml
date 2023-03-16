@@ -7,7 +7,9 @@
 			android:icon="@mipmap/ic_launcher"
 			android:label="@string/app_name"
 			android:roundIcon="@mipmap/ic_launcher_round"
-			android:supportsRtl="true">
+			android:supportsRtl="true"
+			android:name="de.daubli.ndimonitor.NdiMonitorApplication"
+	>
 		<activity
 				android:name="de.daubli.ndimonitor.MainActivity"
 				android:exported="true"

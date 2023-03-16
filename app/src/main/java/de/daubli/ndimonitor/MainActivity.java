@@ -1,16 +1,12 @@
 package de.daubli.ndimonitor;
 
-import static android.preference.PreferenceManager.getDefaultSharedPreferences;
-
 import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.daubli.ndimonitor.R;
 
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -26,6 +22,7 @@ import android.net.nsd.NsdManager;
 import android.os.Bundle;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import de.daubli.ndimonitor.settings.SettingsStore;
 import me.walkerknapp.devolay.*;
 
 public class MainActivity extends AppCompatActivity {
@@ -36,6 +33,7 @@ public class MainActivity extends AppCompatActivity {
     TextView refreshHint;
     SwipeRefreshLayout mSwipeRefreshLayout;
     private static DevolaySource source;
+    private SettingsStore settingsStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -50,7 +48,9 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onStart() {
         super.onStart();
-        this.finder = new DevolayFinder(true, null, getAdditionalSources());
+
+        this.settingsStore = new SettingsStore();
+        this.finder = new DevolayFinder(true, null, settingsStore.getAdditionalSources());
 
         mSwipeRefreshLayout = findViewById(R.id.swipeToRefresh);
         mSwipeRefreshLayout.setColorSchemeResources(R.color.cardview_shadow_end_color);
@@ -129,17 +129,6 @@ public class MainActivity extends AppCompatActivity {
             MainActivity.this.startActivity(settingsIntent);
         }
         return true;
-    }
-
-    private String getAdditionalSources() {
-        SharedPreferences defaultSharedPreferences = getSharedPreferences("de.daubli.ndimonitor_preferences",
-                Context.MODE_PRIVATE);
-
-        if (defaultSharedPreferences.contains(SettingsActivity.ADDITIONAL_SOURCES_KEY)) {
-            return defaultSharedPreferences.getString(SettingsActivity.ADDITIONAL_SOURCES_KEY, "");
-        }
-
-        return "";
     }
 
     public static void setCurrentSource(DevolaySource sourceToSet) {

@@ -12,28 +12,23 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import de.daubli.ndimonitor.settings.SettingsStore;
 
 public class SettingsActivity extends Activity {
 
     EditText additionalSourcesEditText;
-    SharedPreferences prefs;
-    public static final String ADDITIONAL_SOURCES_KEY = "com.daubli.ndimonitor.additionalsources";
+    private SettingsStore settingsStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
-        prefs = getSharedPreferences(
-                "de.daubli.ndimonitor_preferences", Context.MODE_PRIVATE);
-
         additionalSourcesEditText = findViewById(R.id.additionalSourcesEditText);
+        settingsStore = new SettingsStore();
 
         Button button = findViewById(R.id.saveBtn);
         button.setOnClickListener((View v) -> {
-            String additionalSourcesValue = trimAndFormatAdditionalSourcesValue();
-            SharedPreferences.Editor editor = prefs.edit();
-            editor.putString(ADDITIONAL_SOURCES_KEY, additionalSourcesValue);
-            editor.apply();
+            this.settingsStore.setAdditionalSources(additionalSourcesEditText.getText().toString());
             this.finish();
         });
     }
@@ -41,13 +36,6 @@ public class SettingsActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (prefs.contains(ADDITIONAL_SOURCES_KEY)) {
-            this.additionalSourcesEditText.setText(prefs.getString(ADDITIONAL_SOURCES_KEY, ""));
-        }
-    }
-
-    private String trimAndFormatAdditionalSourcesValue() {
-        String rawValue = additionalSourcesEditText.getText().toString();
-        return StringUtils.deleteWhitespace(rawValue);
+        this.additionalSourcesEditText.setText(settingsStore.getAdditionalSources());
     }
 }
