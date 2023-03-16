@@ -1,6 +1,6 @@
 # NdiMonitor
 
-Android App to view [NDI®](http://ndi.tv/)-Stream on an mobile phone. 
+Android App to view [NDI®](http://ndi.tv/)-Stream on a mobile phone. 
 
 # License
 
