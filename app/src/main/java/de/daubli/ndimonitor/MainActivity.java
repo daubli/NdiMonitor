@@ -50,7 +50,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStart();
 
         this.settingsStore = new SettingsStore();
-        this.finder = new DevolayFinder(true, null, settingsStore.getAdditionalSources());
+        this.finder = new DevolayFinder(false, null, settingsStore.getAdditionalSources());
 
         mSwipeRefreshLayout = findViewById(R.id.swipeToRefresh);
         mSwipeRefreshLayout.setColorSchemeResources(R.color.cardview_shadow_end_color);
@@ -109,7 +109,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void beginStreaming() {
-        Intent streamingIntent = new Intent(MainActivity.this, StreamNDIVideoActivity.class);
+        Intent streamingIntent = new Intent(this, StreamNDIVideoActivity.class);
         MainActivity.this.startActivity(streamingIntent);
     }
 

@@ -23,10 +23,12 @@
 		<activity
 				android:name="de.daubli.ndimonitor.StreamNDIVideoActivity"
 				android:screenOrientation="landscape"
+				android:exported="true"
 				android:theme="@style/Theme.AppCompat.NoActionBar"
 		/>
 		<activity
 				android:name="de.daubli.ndimonitor.SettingsActivity"
+				android:exported="true"
 				android:theme="@style/Theme.AppCompat.Light"
 		/>
 	</application>

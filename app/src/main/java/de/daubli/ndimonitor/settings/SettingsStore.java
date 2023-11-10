@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import androidx.annotation.Nullable;
 
 public class SettingsStore {
 
@@ -18,12 +19,17 @@ public class SettingsStore {
                 Context.MODE_PRIVATE);
     }
 
+    @Nullable
     public String getAdditionalSources() {
         if (sharedPreferences.contains(ADDITIONAL_SOURCES_KEY)) {
-            return sharedPreferences.getString(ADDITIONAL_SOURCES_KEY, "");
+            String sources = sharedPreferences.getString(ADDITIONAL_SOURCES_KEY, null);
+            if (sources.isEmpty()) {
+                return null;
+            }
+            return sources;
         }
 
-        return "";
+        return null;
     }
 
     public void setAdditionalSources(String additionalSources) {
