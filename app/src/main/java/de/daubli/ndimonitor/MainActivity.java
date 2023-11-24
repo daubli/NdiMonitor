@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import com.daubli.ndimonitor.R;
 
 import android.content.Intent;
+import android.net.nsd.NsdServiceInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         nsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
+        registerNsdKeepAliveService();
         setContentView(R.layout.activity_main);
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
@@ -133,5 +135,31 @@ public class MainActivity extends AppCompatActivity {
 
     public static void setCurrentSource(DevolaySource sourceToSet) {
         source = sourceToSet;
+    }
+
+    private void registerNsdKeepAliveService() {
+        //hack to keep nsd daemon alive
+        NsdServiceInfo nsdServiceInfo = new NsdServiceInfo();
+        nsdServiceInfo.setServiceName("KeepAliveService");
+        nsdServiceInfo.setServiceType("_keep_alive._tcp");
+        nsdServiceInfo.setPort(12345);
+
+        nsdManager.registerService(nsdServiceInfo, NsdManager.PROTOCOL_DNS_SD, new NsdManager.RegistrationListener() {
+            @Override
+            public void onRegistrationFailed(NsdServiceInfo nsdServiceInfo, int i) {
+            }
+
+            @Override
+            public void onUnregistrationFailed(NsdServiceInfo nsdServiceInfo, int i) {
+            }
+
+            @Override
+            public void onServiceRegistered(NsdServiceInfo nsdServiceInfo) {
+            }
+
+            @Override
+            public void onServiceUnregistered(NsdServiceInfo nsdServiceInfo) {
+            }
+        });
     }
 }
