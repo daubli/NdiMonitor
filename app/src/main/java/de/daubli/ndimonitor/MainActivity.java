@@ -45,11 +45,6 @@ public class MainActivity extends AppCompatActivity {
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
         Devolay.loadLibraries();
-    }
-
-    @Override
-    protected void onStart() {
-        super.onStart();
 
         this.settingsStore = new SettingsStore();
         this.finder = new DevolayFinder(false, null, settingsStore.getAdditionalSources());
