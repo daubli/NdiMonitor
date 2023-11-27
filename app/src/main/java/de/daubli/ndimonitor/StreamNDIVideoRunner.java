@@ -18,7 +18,7 @@ public class StreamNDIVideoRunner extends Thread {
     private static final int sampleRate = 48000;
     private static final int channelCount = 2;
 
-    float clockSpeed = 25;
+    float initialFrameRate = 25;
 
     public StreamNDIVideoRunner(DevolaySource ndiVideoSource, NdiVideoView ndiVideoView,
             StreamNDIVideoActivity activity) {
@@ -41,7 +41,7 @@ public class StreamNDIVideoRunner extends Thread {
         DevolayAudioFrameInterleaved16s interleaved16s = new DevolayAudioFrameInterleaved16s();
         interleaved16s.setReferenceLevel(20); // Recommended level for receiving in NDI docs
         interleaved16s.setData(
-                ByteBuffer.allocateDirect((int) (sampleRate / clockSpeed) * channelCount * Short.BYTES));
+                ByteBuffer.allocateDirect((int) (sampleRate / initialFrameRate) * channelCount * Short.BYTES));
 
         final int minBufferSize = AudioRecord.getMinBufferSize(sampleRate,
                 AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
@@ -57,27 +57,24 @@ public class StreamNDIVideoRunner extends Thread {
         DevolayFrameSync frameSync = new DevolayFrameSync(receiver);
         // Attach the frame-synchronizer to ensure that audio is dynamically resampled based on request frequency.
         try {
-            // Run for one minute
             boolean isFirstFrame = true;
-
             audioTrack.play();
+            byte[] audioData = new byte[0];
 
             while (running) {
-                long startTimeStamp = System.currentTimeMillis();
-
-                if (receiver.getConnectionCount() < 1) {
-                    receiver.connect(ndiVideoSource);
-                }
-
                 // Capture audio samples
-                frameSync.captureAudio(audioFrame, sampleRate, channelCount, (int) (sampleRate / clockSpeed));
+                frameSync.captureAudio(audioFrame, sampleRate, channelCount, (int) (sampleRate / initialFrameRate));
                 // Convert the given float data to interleaved 16s data
                 DevolayUtilities.planarFloatToInterleaved16s(audioFrame, interleaved16s);
                 // Get the audio data in a byte array, needed to write to a SourceDataLine
                 int size = audioFrame.getSamples() * Short.BYTES * audioFrame.getChannels();
-                byte[] audioData = new byte[size];
-                interleaved16s.getData().get(audioData);
 
+                //prevent reallocation of the array
+                if (audioData.length != size) {
+                    audioData = new byte[size];
+                }
+
+                interleaved16s.getData().get(audioData);
                 audioTrack.write(audioData, 0, size);
 
                 // Capture a video frame
@@ -86,20 +83,17 @@ public class StreamNDIVideoRunner extends Thread {
                             .ifPresent(frame -> ndiVideoView.setCurrentFrame(videoFrame)));
 
                     if (isFirstFrame) {
-                        clockSpeed = (float) videoFrame.getFrameRateN() / (float) videoFrame.getFrameRateD();
+                        initialFrameRate = (float) videoFrame.getFrameRateN() / (float) videoFrame.getFrameRateD();
                         interleaved16s.setData(
                                 ByteBuffer.allocateDirect(
-                                        (int) (sampleRate / clockSpeed) * channelCount * Short.BYTES));
+                                        (int) (sampleRate / initialFrameRate) * channelCount * Short.BYTES));
                         activity.runOnUiThread(() -> ndiVideoView.setVisibility(View.VISIBLE));
                     }
                     isFirstFrame = false;
                 }
 
-                long loopDuration = System.currentTimeMillis() - startTimeStamp;
-
-                if (loopDuration < (1000 / clockSpeed)) {
-                    Thread.sleep((long) (1000 / clockSpeed) - loopDuration);
-                }
+                //run with max 50Hz. In case the frame rate is lower - run with the double of the frame rate
+                Thread.sleep(Math.round(1000 / (Math.max(initialFrameRate * 2, 50))));
             }
         } catch (InterruptedException interruptedException) {
             audioTrack.stop();
@@ -107,6 +101,8 @@ public class StreamNDIVideoRunner extends Thread {
             audioFrame.close();
             frameSync.close();
             receiver.close();
+            // Preserve evidence that the thread was interrupted
+            Thread.currentThread().interrupt();
         }
     }
 
