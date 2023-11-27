@@ -9,6 +9,7 @@
 			android:roundIcon="@mipmap/ic_launcher_round"
 			android:supportsRtl="true"
 			android:name="de.daubli.ndimonitor.NdiMonitorApplication"
+			android:largeHeap="true"
 	>
 		<activity
 				android:name="de.daubli.ndimonitor.MainActivity"
