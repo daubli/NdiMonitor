@@ -10,11 +10,13 @@
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:id="@+id/ndiVideoView"/>
+
 	<com.google.android.material.floatingactionbutton.FloatingActionButton
 			android:id="@+id/regular_fab"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			app:tint="#000"
+			android:visibility="invisible"
 			app:backgroundTint="@android:color/white"
 			android:layout_margin="16dp"
 			android:src="@android:drawable/ic_menu_close_clear_cancel"

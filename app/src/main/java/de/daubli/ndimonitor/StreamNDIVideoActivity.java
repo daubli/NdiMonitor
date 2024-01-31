@@ -1,29 +1,27 @@
 package de.daubli.ndimonitor;
 
-import java.nio.ByteBuffer;
-import java.util.Optional;
-import java.util.logging.Logger;
-
 import com.daubli.ndimonitor.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
-import android.app.Activity;
-import android.content.Intent;
-import android.media.*;
+import android.os.Build;
 import android.os.Bundle;
-import android.view.View;
-import android.view.WindowManager;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.*;
 import androidx.appcompat.app.AppCompatActivity;
 import de.daubli.ndimonitor.view.NdiVideoView;
 import me.walkerknapp.devolay.*;
 
-public class StreamNDIVideoActivity extends AppCompatActivity implements View.OnClickListener {
+public class StreamNDIVideoActivity extends AppCompatActivity {
 
     DevolaySource ndiVideoSource;
     NdiVideoView ndiVideoView;
     FloatingActionButton closeButton;
 
     private StreamNDIVideoRunner runner;
+
+    private Handler closeButtonHideHandler;
+    private Runnable hideCloseButtonCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,8 +30,49 @@ public class StreamNDIVideoActivity extends AppCompatActivity implements View.On
         setContentView(R.layout.stream_ndi_video_activity);
         ndiVideoView = findViewById(R.id.ndiVideoView);
         closeButton = findViewById(R.id.regular_fab);
-        closeButton.setOnClickListener(this);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        initializeCloseButton();
+        setFullScreen();
+    }
+
+    private void initializeCloseButton() {
+        this.closeButton = findViewById(R.id.regular_fab);
+        this.closeButton.setOnClickListener(view -> closeVideoActivity());
+        this.closeButtonHideHandler = new Handler(Looper.getMainLooper());
+        this.hideCloseButtonCallback = () -> closeButton.setVisibility(View.GONE);
+        attachCloseButtonShowAndHideHandler();
+    }
+
+    private void closeVideoActivity() {
+        runner.shutdown();
+    }
+
+    private void attachCloseButtonShowAndHideHandler() {
+        ndiVideoView.setOnClickListener(view -> {
+            closeButton.setVisibility(View.VISIBLE);
+            closeButtonHideHandler.removeCallbacks(hideCloseButtonCallback);
+            closeButtonHideHandler.postDelayed(hideCloseButtonCallback, 5000);
+        });
+    }
+
+    private void setFullScreen() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.hide(WindowInsets.Type.statusBars() | WindowInsets.Type.navigationBars());
+                controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+            }
+        } else {
+            //noinspection deprecation
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                            | View.SYSTEM_UI_FLAG_IMMERSIVE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+        }
     }
 
     @Override
@@ -41,21 +80,5 @@ public class StreamNDIVideoActivity extends AppCompatActivity implements View.On
         super.onResume();
         runner = new StreamNDIVideoRunner(ndiVideoSource, ndiVideoView, this);
         runner.start();
-    }
-
-    @Override
-    public void onClick(View view) {
-        if (view.getId() == R.id.regular_fab && runner != null) {
-            runner.shutdown();
-            while (runner != null) {
-                try {
-                    runner.join();
-                    runner = null;
-                    this.finish();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
     }
 }

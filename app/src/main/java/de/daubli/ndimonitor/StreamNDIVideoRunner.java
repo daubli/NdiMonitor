@@ -96,14 +96,16 @@ public class StreamNDIVideoRunner extends Thread {
                 Thread.sleep(Math.round(1000 / (Math.max(initialFrameRate * 2, 50))));
             }
         } catch (InterruptedException interruptedException) {
-            audioTrack.stop();
-            videoFrame.close();
-            audioFrame.close();
-            frameSync.close();
-            receiver.close();
             // Preserve evidence that the thread was interrupted
             Thread.currentThread().interrupt();
         }
+        // Close the frames
+        audioTrack.stop();
+        videoFrame.close();
+        audioFrame.close();
+        frameSync.close();
+        receiver.close();
+        activity.finish();
     }
 
     public void shutdown() {
