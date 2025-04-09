@@ -7,10 +7,10 @@ import android.graphics.Paint;
 import android.util.AttributeSet;
 import android.view.View;
 import androidx.annotation.Nullable;
+import de.daubli.ndimonitor.ndi.FourCCType;
+import de.daubli.ndimonitor.ndi.VideoFrame;
 import de.daubli.ndimonitor.render.BgraBitmapBuilder;
 import de.daubli.ndimonitor.render.UyvyBitmapBuilder;
-import me.walkerknapp.devolay.DevolayFrameFourCCType;
-import me.walkerknapp.devolay.DevolayVideoFrame;
 
 public class NdiVideoView extends View {
 
@@ -38,7 +38,7 @@ public class NdiVideoView extends View {
         this.currentFrameBitmap = null;
     }
 
-    public void setCurrentFrame(DevolayVideoFrame videoFrame) {
+    public void setCurrentFrame(VideoFrame videoFrame) {
         int heightOfView = this.getHeight();
         int widthOfView = this.getWidth();
 
@@ -49,12 +49,12 @@ public class NdiVideoView extends View {
 
         leftOffset = (widthOfView - width) / 2;
 
-        if (videoFrame.getFourCCType().equals(DevolayFrameFourCCType.UYVY)) {
+        if (videoFrame.getFourCCType().equals(FourCCType.UYVY)) {
             this.currentFrameBitmap =
                     UyvyBitmapBuilder.builder().withFrame(videoFrame).withHeight(height).withWidth(width).build();
         }
 
-        if (videoFrame.getFourCCType().equals(DevolayFrameFourCCType.BGRA)) {
+        if (videoFrame.getFourCCType().equals(FourCCType.BGRA)) {
             this.currentFrameBitmap =
                     BgraBitmapBuilder.builder().withFrame(videoFrame).withHeight(height).withWidth(width).build();
         }

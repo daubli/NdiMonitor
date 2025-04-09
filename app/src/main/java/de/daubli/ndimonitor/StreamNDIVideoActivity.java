@@ -9,12 +9,12 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.*;
 import androidx.appcompat.app.AppCompatActivity;
+import de.daubli.ndimonitor.ndi.Source;
 import de.daubli.ndimonitor.view.NdiVideoView;
-import me.walkerknapp.devolay.*;
 
 public class StreamNDIVideoActivity extends AppCompatActivity {
 
-    DevolaySource ndiVideoSource;
+    Source ndiVideoSource;
     NdiVideoView ndiVideoView;
     FloatingActionButton closeButton;
 

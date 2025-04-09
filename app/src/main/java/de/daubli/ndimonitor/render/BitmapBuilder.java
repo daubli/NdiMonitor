@@ -3,15 +3,15 @@ package de.daubli.ndimonitor.render;
 import static io.github.crow_misia.libyuv.AbgrBuffer.Factory;
 
 import android.graphics.Bitmap;
+import de.daubli.ndimonitor.ndi.VideoFrame;
 import io.github.crow_misia.libyuv.AbgrBuffer;
 import io.github.crow_misia.libyuv.ArgbBuffer;
-import me.walkerknapp.devolay.DevolayVideoFrame;
 
 public abstract class BitmapBuilder {
 
     int width = 0;
     int height = 0;
-    DevolayVideoFrame frame;
+    VideoFrame frame;
 
     public BitmapBuilder withWidth(int width) {
         this.width = width;
@@ -23,7 +23,7 @@ public abstract class BitmapBuilder {
         return this;
     }
 
-    public BitmapBuilder withFrame(DevolayVideoFrame frame) {
+    public BitmapBuilder withFrame(VideoFrame frame) {
         this.frame = frame;
         return this;
     }

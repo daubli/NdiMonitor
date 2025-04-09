@@ -23,17 +23,18 @@ import android.net.nsd.NsdManager;
 import android.os.Bundle;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import de.daubli.ndimonitor.ndi.NdiFinder;
+import de.daubli.ndimonitor.ndi.Source;
 import de.daubli.ndimonitor.settings.SettingsStore;
-import me.walkerknapp.devolay.*;
 
 public class MainActivity extends AppCompatActivity {
 
     private NsdManager nsdManager;
-    DevolayFinder finder;
+    NdiFinder finder;
     ListView sourceListView;
     TextView refreshHint;
     SwipeRefreshLayout mSwipeRefreshLayout;
-    private static DevolaySource source;
+    private static Source source;
     private SettingsStore settingsStore;
 
     @Override
@@ -44,10 +45,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
-        Devolay.loadLibraries();
+        //Devolay.loadLibraries();
 
         this.settingsStore = new SettingsStore();
-        this.finder = new DevolayFinder(false, null, settingsStore.getAdditionalSources());
+        this.finder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
 
         mSwipeRefreshLayout = findViewById(R.id.swipeToRefresh);
         mSwipeRefreshLayout.setColorSchemeResources(R.color.cardview_shadow_end_color);
@@ -63,9 +64,9 @@ public class MainActivity extends AppCompatActivity {
     private void refreshSourcesAndUpdateList() {
         final Runnable r = () -> {
             runOnUiThread(() -> mSwipeRefreshLayout.setRefreshing(true));
-            DevolaySource[] sources = refreshAndReturnSources();
+            Source[] sources = refreshAndReturnSources();
             List<String> sourceList =
-                    Arrays.stream(sources).map(DevolaySource::getSourceName).collect(Collectors.toList());
+                    Arrays.stream(sources).map(Source::getSourceName).collect(Collectors.toList());
             runOnUiThread(() -> {
                 ArrayAdapter<String> refreshedSourceArray =
                         new ArrayAdapter<>(this, R.layout.support_simple_spinner_dropdown_item, sourceList);
@@ -94,11 +95,11 @@ public class MainActivity extends AppCompatActivity {
         this.finder.close();
     }
 
-    public static DevolaySource getSource() {
+    public static Source getSource() {
         return source;
     }
 
-    public DevolaySource[] refreshAndReturnSources() {
+    public Source[] refreshAndReturnSources() {
         if (!finder.waitForSources(5000)) {
             // If no new sources were found
         }
@@ -128,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    public static void setCurrentSource(DevolaySource sourceToSet) {
+    public static void setCurrentSource(Source sourceToSet) {
         source = sourceToSet;
     }
 

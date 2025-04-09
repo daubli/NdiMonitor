@@ -5,12 +5,12 @@ import java.util.Optional;
 
 import android.media.*;
 import android.view.View;
+import de.daubli.ndimonitor.ndi.*;
 import de.daubli.ndimonitor.view.NdiVideoView;
-import me.walkerknapp.devolay.*;
 
 public class StreamNDIVideoRunner extends Thread {
 
-    private final DevolaySource ndiVideoSource;
+    private final Source ndiVideoSource;
     private final NdiVideoView ndiVideoView;
     private final StreamNDIVideoActivity activity;
     private volatile boolean running = true;
@@ -20,8 +20,8 @@ public class StreamNDIVideoRunner extends Thread {
 
     float initialFrameRate = 25;
 
-    public StreamNDIVideoRunner(DevolaySource ndiVideoSource, NdiVideoView ndiVideoView,
-            StreamNDIVideoActivity activity) {
+    public StreamNDIVideoRunner(Source ndiVideoSource, NdiVideoView ndiVideoView,
+                                StreamNDIVideoActivity activity) {
         super();
         this.ndiVideoSource = ndiVideoSource;
         this.ndiVideoView = ndiVideoView;
@@ -30,15 +30,15 @@ public class StreamNDIVideoRunner extends Thread {
 
     @Override
     public void run() {
-        DevolayReceiver receiver = new DevolayReceiver();
+        NdiReceiver receiver = new NdiReceiver();
 
         receiver.connect(ndiVideoSource);
         // Create initial frames to be used for capturing
-        DevolayVideoFrame videoFrame = new DevolayVideoFrame();
-        DevolayAudioFrame audioFrame = new DevolayAudioFrame();
+        VideoFrame videoFrame = new VideoFrame();
+        AudioFrame audioFrame = new AudioFrame();
 
         // Setup frame to convert floating-point data to 16s data
-        DevolayAudioFrameInterleaved16s interleaved16s = new DevolayAudioFrameInterleaved16s();
+        AudioFrameInterleaved16s interleaved16s = new AudioFrameInterleaved16s();
         interleaved16s.setReferenceLevel(20); // Recommended level for receiving in NDI docs
         interleaved16s.setData(
                 ByteBuffer.allocateDirect((int) (sampleRate / initialFrameRate) * channelCount * Short.BYTES));
@@ -54,7 +54,7 @@ public class StreamNDIVideoRunner extends Thread {
                 new AudioTrack.Builder().setAudioAttributes(audioAttributes).setAudioFormat(audioFormat)
                         .setBufferSizeInBytes(minBufferSize).setTransferMode(AudioTrack.MODE_STREAM).build();
 
-        DevolayFrameSync frameSync = new DevolayFrameSync(receiver);
+        FrameSync frameSync = new FrameSync(receiver);
         // Attach the frame-synchronizer to ensure that audio is dynamically resampled based on request frequency.
         try {
             boolean isFirstFrame = true;
@@ -65,7 +65,7 @@ public class StreamNDIVideoRunner extends Thread {
                 // Capture audio samples
                 frameSync.captureAudio(audioFrame, sampleRate, channelCount, (int) (sampleRate / initialFrameRate));
                 // Convert the given float data to interleaved 16s data
-                DevolayUtilities.planarFloatToInterleaved16s(audioFrame, interleaved16s);
+                AudioUtil.planarFloatToInterleaved16s(audioFrame, interleaved16s);
                 // Get the audio data in a byte array, needed to write to a SourceDataLine
                 int size = audioFrame.getSamples() * Short.BYTES * audioFrame.getChannels();
 
