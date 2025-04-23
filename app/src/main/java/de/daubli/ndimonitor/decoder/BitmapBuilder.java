@@ -1,9 +1,9 @@
-package de.daubli.ndimonitor.render;
+package de.daubli.ndimonitor.decoder;
 
 import static io.github.crow_misia.libyuv.AbgrBuffer.Factory;
 
 import android.graphics.Bitmap;
-import de.daubli.ndimonitor.ndi.VideoFrame;
+import de.daubli.ndimonitor.ndi.NdiVideoFrame;
 import io.github.crow_misia.libyuv.AbgrBuffer;
 import io.github.crow_misia.libyuv.ArgbBuffer;
 
@@ -11,7 +11,7 @@ public abstract class BitmapBuilder {
 
     int width = 0;
     int height = 0;
-    VideoFrame frame;
+    NdiVideoFrame frame;
 
     public BitmapBuilder withWidth(int width) {
         this.width = width;
@@ -23,7 +23,7 @@ public abstract class BitmapBuilder {
         return this;
     }
 
-    public BitmapBuilder withFrame(VideoFrame frame) {
+    public BitmapBuilder withFrame(NdiVideoFrame frame) {
         this.frame = frame;
         return this;
     }
@@ -32,10 +32,11 @@ public abstract class BitmapBuilder {
         AbgrBuffer forBitmapBuffer = Factory.allocate(frame.getXResolution(), frame.getYResolution());
         argbBuffer.convertTo(forBitmapBuffer);
 
-        Bitmap scaledBitmap = Bitmap.createScaledBitmap(forBitmapBuffer.asBitmap(), width, height, false);
+        Bitmap unsafeBitmap = forBitmapBuffer.asBitmap();
+        Bitmap safeCopy = unsafeBitmap.copy(Bitmap.Config.ARGB_8888, false);
         forBitmapBuffer.close();
 
-        return scaledBitmap;
+        return Bitmap.createScaledBitmap(safeCopy, width, height, false);
     }
 
     public abstract Bitmap build();

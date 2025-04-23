@@ -9,26 +9,27 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.*;
 import androidx.appcompat.app.AppCompatActivity;
-import de.daubli.ndimonitor.ndi.Source;
+import de.daubli.ndimonitor.ndi.NdiSource;
+import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.NdiVideoView;
 
 public class StreamNDIVideoActivity extends AppCompatActivity {
-
-    Source ndiVideoSource;
+    NdiSource ndiVideoNdiSource;
     NdiVideoView ndiVideoView;
+
+    FramingHelperOverlayView ndiFramingHelperOverlayView;
     FloatingActionButton closeButton;
-
     private StreamNDIVideoRunner runner;
-
     private Handler closeButtonHideHandler;
     private Runnable hideCloseButtonCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ndiVideoSource = MainActivity.getSource();
+        ndiVideoNdiSource = MainActivity.getSource();
         setContentView(R.layout.stream_ndi_video_activity);
         ndiVideoView = findViewById(R.id.ndiVideoView);
+        ndiFramingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
         closeButton = findViewById(R.id.regular_fab);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         initializeCloseButton();
@@ -78,7 +79,7 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        runner = new StreamNDIVideoRunner(ndiVideoSource, ndiVideoView, this);
+        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, ndiVideoView, ndiFramingHelperOverlayView, this);
         runner.start();
     }
 }

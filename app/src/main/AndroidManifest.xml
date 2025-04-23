@@ -1,37 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-		  package="com.daubli.ndimonitor">
-	<uses-permission android:name="android.permission.INTERNET"/>
-	<application
-			android:allowBackup="true"
-			android:icon="@mipmap/ic_launcher"
-			android:label="@string/app_name"
-			android:roundIcon="@mipmap/ic_launcher_round"
-			android:supportsRtl="true"
-			android:name="de.daubli.ndimonitor.NdiMonitorApplication"
-			android:largeHeap="true"
-	>
-		<activity
-				android:name="de.daubli.ndimonitor.MainActivity"
-				android:exported="true"
-				android:theme="@style/Theme.NdiFinder">
-			<intent-filter>
-				<action android:name="android.intent.action.MAIN"/>
+          package="com.daubli.ndimonitor">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <application
+            android:allowBackup="true"
+            android:icon="@mipmap/ic_launcher"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_round"
+            android:supportsRtl="true"
+            android:name="de.daubli.ndimonitor.NdiMonitorApplication"
+            android:largeHeap="true"
+            android:vmSafeMode="true">
 
-				<category android:name="android.intent.category.LAUNCHER"/>
-			</intent-filter>
-		</activity>
-		<activity
-				android:name="de.daubli.ndimonitor.StreamNDIVideoActivity"
-				android:screenOrientation="landscape"
-				android:exported="true"
-				android:theme="@style/Theme.AppCompat.NoActionBar"
-		/>
-		<activity
-				android:name="de.daubli.ndimonitor.SettingsActivity"
-				android:exported="true"
-				android:theme="@style/Theme.AppCompat.Light"
-		/>
-	</application>
+        >
+        <activity
+                android:name="de.daubli.ndimonitor.MainActivity"
+                android:exported="true"
+                android:theme="@style/Theme.NdiFinder">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity
+                android:name="de.daubli.ndimonitor.StreamNDIVideoActivity"
+                android:screenOrientation="landscape"
+                android:exported="true"
+                android:theme="@style/Theme.AppCompat.NoActionBar"
+        />
+        <activity
+                android:name="de.daubli.ndimonitor.SettingsActivity"
+                android:exported="true"
+                android:theme="@style/Theme.AppCompat.Light"
+        />
+        <activity
+                android:name="de.daubli.ndimonitor.AboutActivity"
+                android:exported="true"
+                android:theme="@style/Theme.NdiFinder"
+        />
+    </application>
 
 </manifest>

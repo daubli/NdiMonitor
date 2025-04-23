@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.render;
+package de.daubli.ndimonitor.decoder;
 
 import android.graphics.Bitmap;
 import io.github.crow_misia.libyuv.ArgbBuffer;

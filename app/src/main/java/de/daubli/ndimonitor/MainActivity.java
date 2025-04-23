@@ -1,9 +1,8 @@
 package de.daubli.ndimonitor;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import com.daubli.ndimonitor.R;
 
 import android.content.Intent;
@@ -11,9 +10,6 @@ import android.net.nsd.NsdServiceInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
@@ -23,18 +19,22 @@ import android.net.nsd.NsdManager;
 import android.os.Bundle;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import de.daubli.ndimonitor.ndi.Ndi;
 import de.daubli.ndimonitor.ndi.NdiFinder;
-import de.daubli.ndimonitor.ndi.Source;
+import de.daubli.ndimonitor.ndi.NdiSource;
 import de.daubli.ndimonitor.settings.SettingsStore;
 
-public class MainActivity extends AppCompatActivity {
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
+public class MainActivity extends AppCompatActivity {
     private NsdManager nsdManager;
     NdiFinder finder;
     ListView sourceListView;
     TextView refreshHint;
     SwipeRefreshLayout mSwipeRefreshLayout;
-    private static Source source;
+    private static NdiSource ndiSource;
     private SettingsStore settingsStore;
 
     @Override
@@ -45,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
-        //Devolay.loadLibraries();
+        Ndi.initialize();
 
         this.settingsStore = new SettingsStore();
         this.finder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
@@ -64,9 +64,9 @@ public class MainActivity extends AppCompatActivity {
     private void refreshSourcesAndUpdateList() {
         final Runnable r = () -> {
             runOnUiThread(() -> mSwipeRefreshLayout.setRefreshing(true));
-            Source[] sources = refreshAndReturnSources();
+            NdiSource[] sources = refreshAndReturnSources();
             List<String> sourceList =
-                    Arrays.stream(sources).map(Source::getSourceName).collect(Collectors.toList());
+                    Arrays.stream(sources).map(NdiSource::getSourceName).collect(Collectors.toList());
             runOnUiThread(() -> {
                 ArrayAdapter<String> refreshedSourceArray =
                         new ArrayAdapter<>(this, R.layout.support_simple_spinner_dropdown_item, sourceList);
@@ -95,11 +95,11 @@ public class MainActivity extends AppCompatActivity {
         this.finder.close();
     }
 
-    public static Source getSource() {
-        return source;
+    public static NdiSource getSource() {
+        return ndiSource;
     }
 
-    public Source[] refreshAndReturnSources() {
+    public NdiSource[] refreshAndReturnSources() {
         if (!finder.waitForSources(5000)) {
             // If no new sources were found
         }
@@ -115,8 +115,7 @@ public class MainActivity extends AppCompatActivity {
     public boolean onCreateOptionsMenu(Menu menu) {
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.menu_settings, menu);
-
-        // return true so that the menu pop up is opened
+        inflater.inflate(R.menu.menu_about, menu);
         return true;
     }
 
@@ -125,12 +124,15 @@ public class MainActivity extends AppCompatActivity {
         if (item.getTitle().equals("Settings")) {
             Intent settingsIntent = new Intent(MainActivity.this, SettingsActivity.class);
             MainActivity.this.startActivity(settingsIntent);
+        } else if (item.getTitle().equals("About")) {
+            Intent aboutIntent = new Intent(MainActivity.this, AboutActivity.class);
+            MainActivity.this.startActivity(aboutIntent);
         }
         return true;
     }
 
-    public static void setCurrentSource(Source sourceToSet) {
-        source = sourceToSet;
+    public static void setCurrentSource(NdiSource ndiSourceToSet) {
+        ndiSource = ndiSourceToSet;
     }
 
     private void registerNsdKeepAliveService() {

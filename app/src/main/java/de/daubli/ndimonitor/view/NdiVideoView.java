@@ -1,64 +1,109 @@
 package de.daubli.ndimonitor.view;
 
 import android.content.Context;
-import android.graphics.Bitmap;
-import android.graphics.Canvas;
-import android.graphics.Paint;
+import android.graphics.*;
 import android.util.AttributeSet;
-import android.view.View;
+import android.view.TextureView;
+
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import de.daubli.ndimonitor.ndi.FourCCType;
-import de.daubli.ndimonitor.ndi.VideoFrame;
-import de.daubli.ndimonitor.render.BgraBitmapBuilder;
-import de.daubli.ndimonitor.render.UyvyBitmapBuilder;
 
-public class NdiVideoView extends View {
+public class NdiVideoView extends TextureView implements TextureView.SurfaceTextureListener {
 
-    private Bitmap currentFrameBitmap;
-    private final Paint paint = new Paint(Paint.FILTER_BITMAP_FLAG);
-    private int leftOffset = 0;
+    private final Object lock = new Object();
 
-    public NdiVideoView(Context context) {
+    private Bitmap frontBuffer;
+    private Bitmap backBuffer;
+
+    private Rect dstRect;
+
+    public NdiVideoView(@NonNull Context context) {
         super(context);
+        init();
     }
 
-    public NdiVideoView(Context context, @Nullable AttributeSet attrs) {
+    public NdiVideoView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        init();
+    }
+
+    private void init() {
+        setSurfaceTextureListener(this);
+    }
+
+    public void updateFrame(Bitmap bitmap) {
+        if (bitmap == null || !isAvailable()) return;
+
+        int viewWidth = getWidth();
+        int viewHeight = getHeight();
+        int bitmapWidth = bitmap.getWidth();
+        int bitmapHeight = bitmap.getHeight();
+
+        // Maintain aspect ratio
+        float viewAspect = (float) viewWidth / viewHeight;
+        float bitmapAspect = (float) bitmapWidth / bitmapHeight;
+
+        int dstWidth, dstHeight;
+        if (bitmapAspect > viewAspect) {
+            // Image is wider than view
+            dstWidth = viewWidth;
+            dstHeight = (int) (viewWidth / bitmapAspect);
+        } else {
+            // Image is taller than view
+            dstHeight = viewHeight;
+            dstWidth = (int) (viewHeight * bitmapAspect);
+        }
+
+        // Calculate centered position
+        int left = (viewWidth - dstWidth) / 2;
+        int top = (viewHeight - dstHeight) / 2;
+        dstRect = new Rect(left, top, left + dstWidth, top + dstHeight);
+
+        Canvas canvas = null;
+        try {
+            canvas = lockCanvas();
+            if (canvas != null) {
+                canvas.drawColor(Color.BLACK); // Clear previous frame
+                canvas.drawBitmap(bitmap, null, dstRect, null);
+            }
+        } finally {
+            if (canvas != null) {
+                unlockCanvasAndPost(canvas);
+            }
+        }
+    }
+
+    public Rect getLocationOnScreenRect() {
+        return dstRect;
     }
 
     @Override
-    protected void onDraw(Canvas canvas) {
-        super.onDraw(canvas);
-        canvas.save();
-        canvas.drawBitmap(currentFrameBitmap, leftOffset, 0, paint);
-        canvas.restore();
+    public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surface) {
+        synchronized (lock) {
+            if (frontBuffer != null) {
+                frontBuffer.recycle();
+                frontBuffer = null;
+            }
+            if (backBuffer != null) {
+                backBuffer.recycle();
+                backBuffer = null;
+            }
+        }
+        return true;
     }
 
-    public void deleteCurrentFrameData() {
-        this.currentFrameBitmap = null;
+    @Override
+    public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surface) {
+        // no-op
     }
 
-    public void setCurrentFrame(VideoFrame videoFrame) {
-        int heightOfView = this.getHeight();
-        int widthOfView = this.getWidth();
+    @Override
+    public void onSurfaceTextureAvailable(@NonNull SurfaceTexture surface, int width, int height) {
+        // no-op
+    }
 
-        // landscape view
-        float scalingFactor = heightOfView > 0 ? (float) videoFrame.getYResolution() / heightOfView : 1;
-        int height = (int) (videoFrame.getYResolution() / scalingFactor);
-        int width = (int) (videoFrame.getXResolution() / scalingFactor);
-
-        leftOffset = (widthOfView - width) / 2;
-
-        if (videoFrame.getFourCCType().equals(FourCCType.UYVY)) {
-            this.currentFrameBitmap =
-                    UyvyBitmapBuilder.builder().withFrame(videoFrame).withHeight(height).withWidth(width).build();
-        }
-
-        if (videoFrame.getFourCCType().equals(FourCCType.BGRA)) {
-            this.currentFrameBitmap =
-                    BgraBitmapBuilder.builder().withFrame(videoFrame).withHeight(height).withWidth(width).build();
-        }
-
-        this.invalidate();
+    @Override
+    public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surface, int width, int height) {
+        // no-op
     }
 }

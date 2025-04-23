@@ -1,114 +1,156 @@
 package de.daubli.ndimonitor;
 
-import java.nio.ByteBuffer;
-import java.util.Optional;
-
+import android.graphics.Bitmap;
 import android.media.*;
+import android.os.Handler;
+import android.os.Looper;
+import android.view.Choreographer;
 import android.view.View;
+import de.daubli.ndimonitor.audio.AudioUtils;
 import de.daubli.ndimonitor.ndi.*;
+import de.daubli.ndimonitor.decoder.NdiFrameDecoder;
+import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.NdiVideoView;
 
+import java.nio.ByteBuffer;
+
 public class StreamNDIVideoRunner extends Thread {
-
-    private final Source ndiVideoSource;
-    private final NdiVideoView ndiVideoView;
-    private final StreamNDIVideoActivity activity;
-    private volatile boolean running = true;
-
     private static final int sampleRate = 48000;
     private static final int channelCount = 2;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final NdiSource ndiVideoNdiSource;
+    private final NdiVideoView ndiVideoView;
 
-    float initialFrameRate = 25;
+    private final FramingHelperOverlayView framingHelperOverlayView;
+    private final StreamNDIVideoActivity activity;
+    private Choreographer choreographer;
+    private NdiFrameSync frameSync;
+    private NdiReceiver receiver;
+    private NdiVideoFrame ndiVideoFrame;
 
-    public StreamNDIVideoRunner(Source ndiVideoSource, NdiVideoView ndiVideoView,
+    private NdiAudioFrame ndiAudioFrame;
+
+    private Thread audioThread;
+    //
+    private AudioTrack audioTrack;
+    private float frameRate = 25f;
+    private boolean firstFrame = true;
+    private volatile boolean running = true;
+
+    private final Runnable shutdownTask = () -> {
+        if (choreographer != null) choreographer.removeFrameCallback(this.frameCallback);
+    };
+
+    public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, NdiVideoView ndiVideoView,
+                                FramingHelperOverlayView framingHelperOverlayView,
                                 StreamNDIVideoActivity activity) {
         super();
-        this.ndiVideoSource = ndiVideoSource;
+        this.ndiVideoNdiSource = ndiVideoNdiSource;
+        this.framingHelperOverlayView = framingHelperOverlayView;
         this.ndiVideoView = ndiVideoView;
         this.activity = activity;
     }
 
     @Override
     public void run() {
-        NdiReceiver receiver = new NdiReceiver();
+        receiver = new NdiReceiver();
+        receiver.connect(ndiVideoNdiSource);
 
-        receiver.connect(ndiVideoSource);
-        // Create initial frames to be used for capturing
-        VideoFrame videoFrame = new VideoFrame();
-        AudioFrame audioFrame = new AudioFrame();
+        frameSync = new NdiFrameSync(receiver);
+        ndiVideoFrame = new NdiVideoFrame();
+        ndiAudioFrame = new NdiAudioFrame();
 
-        // Setup frame to convert floating-point data to 16s data
-        AudioFrameInterleaved16s interleaved16s = new AudioFrameInterleaved16s();
-        interleaved16s.setReferenceLevel(20); // Recommended level for receiving in NDI docs
-        interleaved16s.setData(
-                ByteBuffer.allocateDirect((int) (sampleRate / initialFrameRate) * channelCount * Short.BYTES));
+        // Init AudioTrack
+        int minBufferSize = AudioRecord.getMinBufferSize(sampleRate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
+        audioTrack = new AudioTrack.Builder()
+                .setAudioAttributes(new AudioAttributes.Builder().setLegacyStreamType(AudioManager.STREAM_MUSIC).build())
+                .setAudioFormat(new AudioFormat.Builder().setSampleRate(sampleRate).setEncoding(AudioFormat.ENCODING_PCM_16BIT).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
+                .setBufferSizeInBytes(minBufferSize * 4)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build();
+        audioTrack.play();
 
-        final int minBufferSize = AudioRecord.getMinBufferSize(sampleRate,
-                AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT);
-        AudioAttributes audioAttributes =
-                new AudioAttributes.Builder().setLegacyStreamType(AudioManager.STREAM_MUSIC).build();
-        AudioFormat audioFormat =
-                new AudioFormat.Builder().setSampleRate(sampleRate).setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build();
-        AudioTrack audioTrack =
-                new AudioTrack.Builder().setAudioAttributes(audioAttributes).setAudioFormat(audioFormat)
-                        .setBufferSizeInBytes(minBufferSize).setTransferMode(AudioTrack.MODE_STREAM).build();
+        mainHandler.post(() -> {
+            choreographer = Choreographer.getInstance();
+            choreographer.postFrameCallback(frameCallback);
+        });
 
-        FrameSync frameSync = new FrameSync(receiver);
-        // Attach the frame-synchronizer to ensure that audio is dynamically resampled based on request frequency.
-        try {
-            boolean isFirstFrame = true;
-            audioTrack.play();
-            byte[] audioData = new byte[0];
+        audioThread = new Thread(() -> {
+            final int bytesPerSample = 2; // 16-bit PCM
+            long nextPlayTime = System.nanoTime();
 
             while (running) {
-                // Capture audio samples
-                frameSync.captureAudio(audioFrame, sampleRate, channelCount, (int) (sampleRate / initialFrameRate));
-                // Convert the given float data to interleaved 16s data
-                AudioUtil.planarFloatToInterleaved16s(audioFrame, interleaved16s);
-                // Get the audio data in a byte array, needed to write to a SourceDataLine
-                int size = audioFrame.getSamples() * Short.BYTES * audioFrame.getChannels();
+                frameSync.captureAudio(ndiAudioFrame, sampleRate, channelCount, (int) (sampleRate / frameRate));
+                ByteBuffer audioBuffer = AudioUtils.convertPlanarFloatToInterleavedPCM16(
+                        ndiAudioFrame.getData(), ndiAudioFrame.getChannels());
 
-                //prevent reallocation of the array
-                if (audioData.length != size) {
-                    audioData = new byte[size];
-                }
+                int sampleCount = audioBuffer.remaining() / (bytesPerSample * channelCount);
+                long chunkDurationNanos = (sampleCount * 1_000_000_000L) / sampleRate;
 
-                interleaved16s.getData().get(audioData);
-                audioTrack.write(audioData, 0, size);
+                byte[] audioData = new byte[audioBuffer.remaining()];
+                audioBuffer.get(audioData);
+                audioTrack.write(audioData, 0, audioData.length);
 
-                // Capture a video frame
-                if (frameSync.captureVideo(videoFrame)) { // Only returns true if a video frame was returned
-                    activity.runOnUiThread(() -> Optional.ofNullable(videoFrame)
-                            .ifPresent(frame -> ndiVideoView.setCurrentFrame(videoFrame)));
+                // Update next play time
+                nextPlayTime += chunkDurationNanos;
 
-                    if (isFirstFrame) {
-                        initialFrameRate = (float) videoFrame.getFrameRateN() / (float) videoFrame.getFrameRateD();
-                        interleaved16s.setData(
-                                ByteBuffer.allocateDirect(
-                                        (int) (sampleRate / initialFrameRate) * channelCount * Short.BYTES));
-                        activity.runOnUiThread(() -> ndiVideoView.setVisibility(View.VISIBLE));
+                long now = System.nanoTime();
+                long sleepTime = nextPlayTime - now;
+
+                if (sleepTime > 0) {
+                    try {
+                        Thread.sleep(sleepTime / 1_000_000L, (int) (sleepTime % 1_000_000L));
+                    } catch (InterruptedException e) {
+                        break;
                     }
-                    isFirstFrame = false;
+                } else {
+                    nextPlayTime = now;
                 }
-
-                //run with max 50Hz. In case the frame rate is lower - run with the double of the frame rate
-                Thread.sleep(Math.round(1000 / (Math.max(initialFrameRate * 2, 50))));
             }
-        } catch (InterruptedException interruptedException) {
-            // Preserve evidence that the thread was interrupted
-            Thread.currentThread().interrupt();
-        }
-        // Close the frames
+
+            stopPlayback();
+        });
+        audioThread.start();
+    }
+
+    private void stopPlayback() {
         audioTrack.stop();
-        videoFrame.close();
-        audioFrame.close();
+        audioTrack.release();
         frameSync.close();
         receiver.close();
+
+        mainHandler.post(shutdownTask);
         activity.finish();
     }
 
     public void shutdown() {
-        this.running = false;
+        running = false;
     }
+
+    private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
+        @Override
+        public void doFrame(long frameTimeNanos) {
+            if (!running) return;
+
+            if (frameSync.captureVideo(ndiVideoFrame)) {
+                float newFrameRate = (float) ndiVideoFrame.getFrameRateN() / ndiVideoFrame.getFrameRateD();
+
+                if (firstFrame) {
+                    ndiVideoView.setVisibility(View.VISIBLE);
+                    firstFrame = false;
+                }
+
+                if (frameRate != newFrameRate) {
+                    frameRate = newFrameRate;
+                }
+
+                Bitmap decodedFrame = NdiFrameDecoder.decode(ndiVideoFrame, ndiVideoView.getHeight());
+                ndiVideoView.updateFrame(decodedFrame);
+                framingHelperOverlayView.setFramingRect(ndiVideoView.getLocationOnScreenRect());
+            }
+
+            choreographer.postFrameCallback(this);
+        }
+    };
 }
+
