@@ -1,5 +1,7 @@
 package de.daubli.ndimonitor;
 
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import com.daubli.ndimonitor.R;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
@@ -18,10 +20,13 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     NdiVideoView ndiVideoView;
 
     FramingHelperOverlayView ndiFramingHelperOverlayView;
-    FloatingActionButton closeButton;
+    LinearLayout menuLayout;
+
+    ImageButton toggleGridButton;
+    ImageButton closeButton;
     private StreamNDIVideoRunner runner;
-    private Handler closeButtonHideHandler;
-    private Runnable hideCloseButtonCallback;
+    private Handler menuHandler;
+    private Runnable hideMenuCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -30,30 +35,46 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
         setContentView(R.layout.stream_ndi_video_activity);
         ndiVideoView = findViewById(R.id.ndiVideoView);
         ndiFramingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
-        closeButton = findViewById(R.id.regular_fab);
+//        closeButton = findViewById(R.id.regular_fab);
+        menuLayout = findViewById(R.id.menu_layout);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        initializeToggleGridButton();
         initializeCloseButton();
+        initShowHideMenu();
         setFullScreen();
     }
 
+    private void initShowHideMenu() {
+        this.menuHandler = new Handler(Looper.getMainLooper());
+        this.hideMenuCallback = () -> menuLayout.setVisibility(View.GONE);
+        ndiVideoView.setOnClickListener(view -> {
+            menuLayout.setVisibility(View.VISIBLE);
+            menuHandler.removeCallbacks(hideMenuCallback);
+            menuHandler.postDelayed(hideMenuCallback, 5000);
+        });
+    }
+
+    private void initializeToggleGridButton() {
+        this.toggleGridButton = findViewById(R.id.grid_button);
+        this.toggleGridButton.setOnClickListener(view -> {
+            if (ndiFramingHelperOverlayView.getVisibility() == View.VISIBLE) {
+                ndiFramingHelperOverlayView.setVisibility(View.GONE);
+                toggleGridButton.setImageResource(R.drawable.grid_icon_3x3);
+            } else {
+                ndiFramingHelperOverlayView.setVisibility(View.VISIBLE);
+                toggleGridButton.setImageResource(R.drawable.grid_icon_3x3_selected);
+            }
+            ndiFramingHelperOverlayView.toggleFramingHelper();
+        });
+    }
+
     private void initializeCloseButton() {
-        this.closeButton = findViewById(R.id.regular_fab);
+        this.closeButton = findViewById(R.id.close_button);
         this.closeButton.setOnClickListener(view -> closeVideoActivity());
-        this.closeButtonHideHandler = new Handler(Looper.getMainLooper());
-        this.hideCloseButtonCallback = () -> closeButton.setVisibility(View.GONE);
-        attachCloseButtonShowAndHideHandler();
     }
 
     private void closeVideoActivity() {
         runner.shutdown();
-    }
-
-    private void attachCloseButtonShowAndHideHandler() {
-        ndiVideoView.setOnClickListener(view -> {
-            closeButton.setVisibility(View.VISIBLE);
-            closeButtonHideHandler.removeCallbacks(hideCloseButtonCallback);
-            closeButtonHideHandler.postDelayed(hideCloseButtonCallback, 5000);
-        });
     }
 
     private void setFullScreen() {

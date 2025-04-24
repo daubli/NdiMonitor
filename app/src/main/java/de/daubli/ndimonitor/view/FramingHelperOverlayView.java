@@ -38,8 +38,8 @@ public class FramingHelperOverlayView extends View {
     /**
      * Show or hide the framing grid.
      */
-    public void setFramingHelperVisible(boolean visible) {
-        isVisible = visible;
+    public void toggleFramingHelper() {
+        isVisible = !isVisible;
         invalidate();
     }
 

@@ -18,16 +18,39 @@
             android:layout_height="match_parent"
             android:visibility="invisible"/>
 
-    <!-- Floating action button, now anchored in bottom-end corner -->
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-            android:id="@+id/regular_fab"
-            android:layout_width="wrap_content"
+    <!-- Horizontal layout for the buttons -->
+    <LinearLayout
+            android:id="@+id/menu_layout"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="top|end"
-            android:layout_margin="16dp"
+            android:layout_gravity="bottom"
+            android:orientation="horizontal"
+            android:layout_marginEnd="16dp"
             android:visibility="invisible"
-            app:backgroundTint="@android:color/white"
-            app:tint="#000"
-            android:src="@android:drawable/ic_menu_close_clear_cancel"/>
+            android:background="#80000000"
+    >
+
+        <Space
+                android:layout_width="wrap_content"
+                android:layout_height="45dp" android:layout_weight="1"
+        />
+
+        <ImageButton
+                android:id="@+id/grid_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/grid_icon_3x3"
+                android:background="@android:color/transparent"
+                android:layout_marginEnd="5dp"
+                android:scaleType="fitXY"
+        />
+
+        <ImageButton
+                android:id="@+id/close_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@android:drawable/ic_menu_close_clear_cancel"
+                android:background="@android:color/transparent"/>
+    </LinearLayout>
 
 </FrameLayout>
