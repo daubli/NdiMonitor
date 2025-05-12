@@ -59,7 +59,7 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
         }
         if (settingsStore.isFocusAssistEnabled()) {
             focusPeakingOverlayView.setVisibility(View.VISIBLE);
-            toggleFocusAssistButton.setImageResource(R.drawable.grid_icon_3x3_selected);
+            toggleFocusAssistButton.setImageResource(R.drawable.focus_assist_selected);
         }
     }
 
