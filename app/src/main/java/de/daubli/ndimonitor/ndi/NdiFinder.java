@@ -2,30 +2,45 @@
 
 package de.daubli.ndimonitor.ndi;
 
-public class NdiFinder {
-    private final long instancePointer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+public class NdiFinder {
+    private static Logger LOG = Logger.getLogger(NdiFinder.class.getSimpleName());
+    private long instancePointer; // no longer final
     private NdiSource[] previouslyQueriedSources;
 
     public NdiFinder(boolean showLocalSources, String groups, String extraIps) {
         this.instancePointer = findCreate(showLocalSources, groups, extraIps);
     }
 
-    public boolean waitForSources(int timeout) {
+    public synchronized boolean waitForSources(int timeout) {
+        checkValid();
         return findWaitForSources(instancePointer, timeout);
     }
 
-    public synchronized NdiSource[] getCurrentSources() {
-        closePreviouslyQueriedSources();
-
-        long[] currentSources = findGetCurrentSources(instancePointer);
-        NdiSource[] currentNdiSources = new NdiSource[currentSources.length];
-        for (int i = 0; i < currentSources.length; i++) {
-            currentNdiSources[i] = new NdiSource(currentSources[i]);
+    public NdiSource getFromQueriedSources(int pos) throws IllegalArgumentException {
+        if (previouslyQueriedSources == null || previouslyQueriedSources.length <= pos) {
+            throw new IllegalArgumentException("Position is faulty");
         }
+        return previouslyQueriedSources[pos];
+    }
 
-        this.previouslyQueriedSources = currentNdiSources;
-        return currentNdiSources;
+    public synchronized NdiSource[] getCurrentSources() {
+        checkValid();
+        closePreviouslyQueriedSources();
+        try {
+            long[] currentSources = findGetCurrentSources(instancePointer);
+            NdiSource[] currentNdiSources = new NdiSource[currentSources.length];
+            for (int i = 0; i < currentSources.length; i++) {
+                currentNdiSources[i] = new NdiSource(currentSources[i]);
+            }
+            this.previouslyQueriedSources = currentNdiSources;
+            return currentNdiSources;
+        } catch (RuntimeException rte) {
+            LOG.log(Level.WARNING, rte.getMessage());
+            return new NdiSource[]{};
+        }
     }
 
     private void closePreviouslyQueriedSources() {
@@ -33,14 +48,23 @@ public class NdiFinder {
             for (NdiSource prev : previouslyQueriedSources) {
                 prev.close();
             }
+            previouslyQueriedSources = null;
         }
     }
 
-    public void close() {
+    public synchronized void close() {
         closePreviouslyQueriedSources();
-        findDestroy(instancePointer);
+        if (instancePointer != 0) {
+            findDestroy(instancePointer);
+            instancePointer = 0;
+        }
     }
 
+    private void checkValid() {
+        if (instancePointer == 0) throw new IllegalStateException("NDI finder is closed or destroyed");
+    }
+
+    // Native methods
     private native void findDestroy(long finderPtr);
 
     private native boolean findWaitForSources(long finderPtr, int timeout);

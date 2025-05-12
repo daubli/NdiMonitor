@@ -7,8 +7,10 @@ import de.daubli.ndimonitor.ndi.NdiVideoFrame;
 import io.github.crow_misia.libyuv.AbgrBuffer;
 import io.github.crow_misia.libyuv.ArgbBuffer;
 
-public abstract class BitmapBuilder {
+import java.util.logging.Logger;
 
+public abstract class BitmapBuilder {
+    static Logger LOG = Logger.getLogger(BitmapBuilder.class.getSimpleName());
     int width = 0;
     int height = 0;
     NdiVideoFrame frame;
@@ -28,15 +30,15 @@ public abstract class BitmapBuilder {
         return this;
     }
 
-    Bitmap buildScaledBitmapFromArgbBuffer(ArgbBuffer argbBuffer) {
-        AbgrBuffer forBitmapBuffer = Factory.allocate(frame.getXResolution(), frame.getYResolution());
+    Bitmap buildBitmapFromArgbBuffer(ArgbBuffer argbBuffer) {
+        AbgrBuffer forBitmapBuffer = Factory.allocate(width, height);
         argbBuffer.convertTo(forBitmapBuffer);
 
         Bitmap unsafeBitmap = forBitmapBuffer.asBitmap();
         Bitmap safeCopy = unsafeBitmap.copy(Bitmap.Config.ARGB_8888, false);
         forBitmapBuffer.close();
 
-        return Bitmap.createScaledBitmap(safeCopy, width, height, false);
+        return Bitmap.createBitmap(safeCopy);
     }
 
     public abstract Bitmap build();

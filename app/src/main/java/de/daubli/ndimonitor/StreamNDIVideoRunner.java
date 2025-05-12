@@ -1,6 +1,7 @@
 package de.daubli.ndimonitor;
 
 import android.graphics.Bitmap;
+import android.graphics.Rect;
 import android.media.*;
 import android.os.Handler;
 import android.os.Looper;
@@ -9,19 +10,23 @@ import android.view.View;
 import de.daubli.ndimonitor.audio.AudioUtils;
 import de.daubli.ndimonitor.ndi.*;
 import de.daubli.ndimonitor.decoder.NdiFrameDecoder;
+import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
-import de.daubli.ndimonitor.view.NdiVideoView;
+import de.daubli.ndimonitor.view.VideoView;
 
 import java.nio.ByteBuffer;
+import java.util.logging.Logger;
 
 public class StreamNDIVideoRunner extends Thread {
     private static final int sampleRate = 48000;
     private static final int channelCount = 2;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final NdiSource ndiVideoNdiSource;
-    private final NdiVideoView ndiVideoView;
+    private final VideoView videoView;
 
     private final FramingHelperOverlayView framingHelperOverlayView;
+
+    private final FocusPeakingOverlayView focusPeakingOverlayView;
     private final StreamNDIVideoActivity activity;
     private Choreographer choreographer;
     private NdiFrameSync frameSync;
@@ -34,20 +39,24 @@ public class StreamNDIVideoRunner extends Thread {
     //
     private AudioTrack audioTrack;
     private float frameRate = 25f;
-    private boolean firstFrame = true;
+    private boolean firstFramePending = true;
+
+    private boolean firstAudioFrameReceived = false;
     private volatile boolean running = true;
 
     private final Runnable shutdownTask = () -> {
         if (choreographer != null) choreographer.removeFrameCallback(this.frameCallback);
     };
 
-    public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, NdiVideoView ndiVideoView,
+    public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, VideoView videoView,
                                 FramingHelperOverlayView framingHelperOverlayView,
+                                FocusPeakingOverlayView focusPeakingOverlayView,
                                 StreamNDIVideoActivity activity) {
         super();
         this.ndiVideoNdiSource = ndiVideoNdiSource;
         this.framingHelperOverlayView = framingHelperOverlayView;
-        this.ndiVideoView = ndiVideoView;
+        this.videoView = videoView;
+        this.focusPeakingOverlayView = focusPeakingOverlayView;
         this.activity = activity;
     }
 
@@ -85,6 +94,11 @@ public class StreamNDIVideoRunner extends Thread {
                         ndiAudioFrame.getData(), ndiAudioFrame.getChannels());
 
                 int sampleCount = audioBuffer.remaining() / (bytesPerSample * channelCount);
+
+                if (sampleCount > 0) {
+                    this.firstAudioFrameReceived = true;
+                }
+
                 long chunkDurationNanos = (sampleCount * 1_000_000_000L) / sampleRate;
 
                 byte[] audioData = new byte[audioBuffer.remaining()];
@@ -132,21 +146,34 @@ public class StreamNDIVideoRunner extends Thread {
         public void doFrame(long frameTimeNanos) {
             if (!running) return;
 
+            if (firstAudioFrameReceived) {
+                videoView.setVisibility(View.VISIBLE);
+                firstFramePending = false;
+            }
+
             if (frameSync.captureVideo(ndiVideoFrame)) {
                 float newFrameRate = (float) ndiVideoFrame.getFrameRateN() / ndiVideoFrame.getFrameRateD();
 
-                if (firstFrame) {
-                    ndiVideoView.setVisibility(View.VISIBLE);
-                    firstFrame = false;
+                if (firstFramePending) {
+                    videoView.setVisibility(View.VISIBLE);
+                    firstFramePending = false;
                 }
 
                 if (frameRate != newFrameRate) {
                     frameRate = newFrameRate;
                 }
 
-                Bitmap decodedFrame = NdiFrameDecoder.decode(ndiVideoFrame, ndiVideoView.getHeight());
-                ndiVideoView.updateFrame(decodedFrame);
-                framingHelperOverlayView.setFramingRect(ndiVideoView.getLocationOnScreenRect());
+                Bitmap decodedFrame = NdiFrameDecoder.decode(ndiVideoFrame, videoView.getHeight());
+                videoView.updateFrame(decodedFrame);
+                Rect dstRect = videoView.getLocationOnScreenRect();
+                framingHelperOverlayView.setFramingRect(dstRect);
+                if (decodedFrame == null) {
+                    return;
+                }
+
+                if (focusPeakingOverlayView.getVisibility() == View.VISIBLE) {
+                    focusPeakingOverlayView.updateFrame(decodedFrame, dstRect);
+                }
             }
 
             choreographer.postFrameCallback(this);

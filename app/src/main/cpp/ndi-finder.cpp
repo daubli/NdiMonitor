@@ -34,6 +34,14 @@ extern "C" {
         uint32_t no_sources = 0;
         auto instance = reinterpret_cast<NDIlib_find_instance_t>(finderPtr);
 
+        if (instance == nullptr) {
+            env->ThrowNew(
+                env->FindClass("java/lang/RuntimeException"),
+                "NDI finder instance pointer is null in native code!"
+            );
+            return nullptr; // This return value is ignored when an exception is pending
+        }
+
         const NDIlib_source_t* p_sources = NDIlib_find_get_current_sources(instance, &no_sources);
 
         if (p_sources == nullptr || no_sources == 0) {

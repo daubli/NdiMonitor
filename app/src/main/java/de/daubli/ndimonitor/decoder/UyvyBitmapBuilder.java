@@ -1,8 +1,7 @@
 package de.daubli.ndimonitor.decoder;
 
 import android.graphics.Bitmap;
-import io.github.crow_misia.libyuv.ArgbBuffer;
-import io.github.crow_misia.libyuv.UyvyBuffer;
+import io.github.crow_misia.libyuv.*;
 
 public class UyvyBitmapBuilder extends BitmapBuilder {
 
@@ -12,16 +11,24 @@ public class UyvyBitmapBuilder extends BitmapBuilder {
 
     @Override
     public Bitmap build() {
-        int width = frame.getXResolution();
-        int height = frame.getYResolution();
+        int frameWidth = frame.getXResolution();
+        int frameHeight = frame.getYResolution();
 
-        UyvyBuffer uyvyBuffer = UyvyBuffer.Factory.wrap(frame.getData(), width, height);
+        UyvyBuffer uyvyBuffer = UyvyBuffer.Factory.wrap(frame.getData(), frameWidth, frameHeight);
 
-        ArgbBuffer argbBuffer = ArgbBuffer.Factory.allocate(width, height);
-        uyvyBuffer.convertTo(argbBuffer);
+        I420Buffer i420Buffer = I420Buffer.Factory.allocate(frameWidth, frameHeight);
+        uyvyBuffer.convertTo(i420Buffer);
         uyvyBuffer.close();
 
-        Bitmap resultBitmap = buildScaledBitmapFromArgbBuffer(argbBuffer);
+        I420Buffer scaledBuffer = I420Buffer.Factory.allocate(this.width, this.height);
+        i420Buffer.scale(scaledBuffer, FilterMode.LINEAR);
+        i420Buffer.close();
+
+        ArgbBuffer argbBuffer = ArgbBuffer.Factory.allocate(this.width, this.height);
+        scaledBuffer.convertTo(argbBuffer);
+        scaledBuffer.close();
+
+        Bitmap resultBitmap = buildBitmapFromArgbBuffer(argbBuffer);
         argbBuffer.close();
 
         return resultBitmap;

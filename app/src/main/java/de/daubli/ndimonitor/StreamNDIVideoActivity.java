@@ -3,7 +3,6 @@ package de.daubli.ndimonitor;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import com.daubli.ndimonitor.R;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 import android.os.Build;
 import android.os.Bundle;
@@ -12,16 +11,21 @@ import android.os.Looper;
 import android.view.*;
 import androidx.appcompat.app.AppCompatActivity;
 import de.daubli.ndimonitor.ndi.NdiSource;
+import de.daubli.ndimonitor.settings.SettingsStore;
+import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
-import de.daubli.ndimonitor.view.NdiVideoView;
+import de.daubli.ndimonitor.view.VideoView;
 
 public class StreamNDIVideoActivity extends AppCompatActivity {
     NdiSource ndiVideoNdiSource;
-    NdiVideoView ndiVideoView;
+    VideoView videoView;
 
     FramingHelperOverlayView ndiFramingHelperOverlayView;
-    LinearLayout menuLayout;
 
+    FocusPeakingOverlayView focusPeakingOverlayView;
+
+    LinearLayout menuLayout;
+    ImageButton toggleFocusAssistButton;
     ImageButton toggleGridButton;
     ImageButton closeButton;
     private StreamNDIVideoRunner runner;
@@ -33,36 +37,70 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         ndiVideoNdiSource = MainActivity.getSource();
         setContentView(R.layout.stream_ndi_video_activity);
-        ndiVideoView = findViewById(R.id.ndiVideoView);
+        videoView = findViewById(R.id.videoView);
         ndiFramingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
-//        closeButton = findViewById(R.id.regular_fab);
+        focusPeakingOverlayView = findViewById(R.id.focusPeakingOverlayView);
         menuLayout = findViewById(R.id.menu_layout);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        initializeToggleFocusAssistButton();
         initializeToggleGridButton();
         initializeCloseButton();
         initShowHideMenu();
         setFullScreen();
+        initSavedState();
+    }
+
+    private void initSavedState() {
+        SettingsStore settingsStore = new SettingsStore();
+        if (settingsStore.isFramingHelperOverlayEnabled()) {
+            ndiFramingHelperOverlayView.setVisibility(View.VISIBLE);
+            toggleGridButton.setImageResource(R.drawable.grid_icon_3x3_selected);
+            ndiFramingHelperOverlayView.toggleFramingHelper();
+        }
+        if (settingsStore.isFocusAssistEnabled()) {
+            focusPeakingOverlayView.setVisibility(View.VISIBLE);
+            toggleFocusAssistButton.setImageResource(R.drawable.grid_icon_3x3_selected);
+        }
     }
 
     private void initShowHideMenu() {
         this.menuHandler = new Handler(Looper.getMainLooper());
         this.hideMenuCallback = () -> menuLayout.setVisibility(View.GONE);
-        ndiVideoView.setOnClickListener(view -> {
+        videoView.setOnClickListener(view -> {
             menuLayout.setVisibility(View.VISIBLE);
             menuHandler.removeCallbacks(hideMenuCallback);
             menuHandler.postDelayed(hideMenuCallback, 5000);
         });
     }
 
+    private void initializeToggleFocusAssistButton() {
+        this.toggleFocusAssistButton = findViewById(R.id.focus_assist_button);
+        this.toggleFocusAssistButton.setOnClickListener(view -> {
+            SettingsStore settingsStore = new SettingsStore();
+            if (focusPeakingOverlayView.getVisibility() == View.VISIBLE) {
+                focusPeakingOverlayView.setVisibility(View.GONE);
+                toggleFocusAssistButton.setImageResource(R.drawable.focus_assist);
+                settingsStore.setFocusAssistEnabled(false);
+            } else {
+                focusPeakingOverlayView.setVisibility(View.VISIBLE);
+                toggleFocusAssistButton.setImageResource(R.drawable.focus_assist_selected);
+                settingsStore.setFocusAssistEnabled(true);
+            }
+        });
+    }
+
     private void initializeToggleGridButton() {
         this.toggleGridButton = findViewById(R.id.grid_button);
         this.toggleGridButton.setOnClickListener(view -> {
+            SettingsStore settingsStore = new SettingsStore();
             if (ndiFramingHelperOverlayView.getVisibility() == View.VISIBLE) {
                 ndiFramingHelperOverlayView.setVisibility(View.GONE);
                 toggleGridButton.setImageResource(R.drawable.grid_icon_3x3);
+                settingsStore.setFramingHelperOverlayEnabled(false);
             } else {
                 ndiFramingHelperOverlayView.setVisibility(View.VISIBLE);
                 toggleGridButton.setImageResource(R.drawable.grid_icon_3x3_selected);
+                settingsStore.setFramingHelperOverlayEnabled(true);
             }
             ndiFramingHelperOverlayView.toggleFramingHelper();
         });
@@ -100,7 +138,7 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, ndiVideoView, ndiFramingHelperOverlayView, this);
+        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, videoView, ndiFramingHelperOverlayView, focusPeakingOverlayView, this);
         runner.start();
     }
 }

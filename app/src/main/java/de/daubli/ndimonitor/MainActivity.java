@@ -1,8 +1,8 @@
 package de.daubli.ndimonitor;
 
+import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
+import android.widget.*;
 import com.daubli.ndimonitor.R;
 
 import android.content.Intent;
@@ -10,8 +10,6 @@ import android.net.nsd.NsdServiceInfo;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.ListView;
-import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.content.Context;
@@ -19,6 +17,7 @@ import android.net.nsd.NsdManager;
 import android.os.Bundle;
 
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import com.google.android.material.snackbar.Snackbar;
 import de.daubli.ndimonitor.ndi.Ndi;
 import de.daubli.ndimonitor.ndi.NdiFinder;
 import de.daubli.ndimonitor.ndi.NdiSource;
@@ -46,10 +45,7 @@ public class MainActivity extends AppCompatActivity {
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
         Ndi.initialize();
-
         this.settingsStore = new SettingsStore();
-        this.finder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
-
         mSwipeRefreshLayout = findViewById(R.id.swipeToRefresh);
         mSwipeRefreshLayout.setColorSchemeResources(R.color.cardview_shadow_end_color);
         mSwipeRefreshLayout.setOnRefreshListener(this::refreshSourcesAndUpdateList);
@@ -64,6 +60,10 @@ public class MainActivity extends AppCompatActivity {
     private void refreshSourcesAndUpdateList() {
         final Runnable r = () -> {
             runOnUiThread(() -> mSwipeRefreshLayout.setRefreshing(true));
+            if (this.finder != null) {
+                this.finder.close();
+            }
+            this.finder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
             NdiSource[] sources = refreshAndReturnSources();
             List<String> sourceList =
                     Arrays.stream(sources).map(NdiSource::getSourceName).collect(Collectors.toList());
@@ -79,8 +79,12 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 sourceListView.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-                    setCurrentSource(finder.getCurrentSources()[position]);
-                    beginStreaming();
+                    try {
+                        setCurrentSource(finder.getFromQueriedSources(position));
+                        beginStreaming();
+                    } catch (IllegalArgumentException iag) {
+                        Snackbar.make(sourceListView, "Source unavailable. Please refresh.", Snackbar.LENGTH_LONG).show();
+                    }
                 });
                 mSwipeRefreshLayout.setRefreshing(false);
             });
@@ -100,9 +104,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public NdiSource[] refreshAndReturnSources() {
-        if (!finder.waitForSources(5000)) {
-            // If no new sources were found
-        }
+        finder.waitForSources(5000);
         return finder.getCurrentSources();
     }
 

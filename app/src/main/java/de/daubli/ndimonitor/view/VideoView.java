@@ -8,7 +8,7 @@ import android.view.TextureView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
-public class NdiVideoView extends TextureView implements TextureView.SurfaceTextureListener {
+public class VideoView extends TextureView implements TextureView.SurfaceTextureListener {
 
     private final Object lock = new Object();
 
@@ -17,12 +17,12 @@ public class NdiVideoView extends TextureView implements TextureView.SurfaceText
 
     private Rect dstRect;
 
-    public NdiVideoView(@NonNull Context context) {
+    public VideoView(@NonNull Context context) {
         super(context);
         init();
     }
 
-    public NdiVideoView(@NonNull Context context, @Nullable AttributeSet attrs) {
+    public VideoView(@NonNull Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
         init();
     }

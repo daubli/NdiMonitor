@@ -12,7 +12,11 @@ public class SettingsStore {
 
     private final SharedPreferences sharedPreferences;
 
-    private static final String ADDITIONAL_SOURCES_KEY = "com.daubli.ndimonitor.additionalsources";
+    private static final String ADDITIONAL_SOURCES_KEY = "de.daubli.ndimonitor.additionalsources";
+
+    private static final String FRAMING_HELPER_ENABLED_KEY = "de.daubli.ndimonitor.view.framing-helper.enabled";
+
+    private static final String FOCUS_ASSIST_ENABLED_KEY = "de.daubli.ndimonitor.view.focusassist.enabled";
 
     public SettingsStore() {
         sharedPreferences = getAppContext().getSharedPreferences("de.daubli.ndimonitor_preferences",
@@ -41,5 +45,32 @@ public class SettingsStore {
 
     private String trimAndFormatAdditionalSourcesValue(String additionalSources) {
         return StringUtils.deleteWhitespace(additionalSources);
+    }
+
+    public boolean isFramingHelperOverlayEnabled() {
+        if (sharedPreferences.contains(FRAMING_HELPER_ENABLED_KEY)) {
+            return sharedPreferences.getBoolean(FRAMING_HELPER_ENABLED_KEY, false);
+        }
+        return false;
+    }
+
+    public void setFramingHelperOverlayEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(FRAMING_HELPER_ENABLED_KEY, enabled);
+        editor.apply();
+    }
+
+
+    public boolean isFocusAssistEnabled() {
+        if (sharedPreferences.contains(FOCUS_ASSIST_ENABLED_KEY)) {
+            return sharedPreferences.getBoolean(FOCUS_ASSIST_ENABLED_KEY, false);
+        }
+        return false;
+    }
+
+    public void setFocusAssistEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(FOCUS_ASSIST_ENABLED_KEY, enabled);
+        editor.apply();
     }
 }
