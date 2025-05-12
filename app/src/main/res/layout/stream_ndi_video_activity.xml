@@ -18,6 +18,12 @@
             android:layout_height="match_parent"
             android:visibility="invisible"/>
 
+    <de.daubli.ndimonitor.view.zebra.ZebraOverlayView
+            android:id="@+id/zebraOverlayView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="invisible"/>
+
     <de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView
             android:id="@+id/focusPeakingOverlayView"
             android:layout_width="match_parent"
@@ -42,12 +48,22 @@
         />
 
         <ImageButton
+                android:id="@+id/zebra_button"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:src="@drawable/zebra"
+                android:background="@android:color/transparent"
+                android:layout_marginEnd="10dp"
+                android:scaleType="fitXY"
+        />
+
+        <ImageButton
                 android:id="@+id/focus_assist_button"
                 android:layout_width="40dp"
                 android:layout_height="40dp"
                 android:src="@drawable/focus_assist"
                 android:background="@android:color/transparent"
-                android:layout_marginEnd="5dp"
+                android:layout_marginEnd="10dp"
                 android:scaleType="fitXY"
         />
 
@@ -57,7 +73,7 @@
                 android:layout_height="40dp"
                 android:src="@drawable/grid_icon_3x3"
                 android:background="@android:color/transparent"
-                android:layout_marginEnd="5dp"
+                android:layout_marginEnd="10dp"
                 android:scaleType="fitXY"
         />
 

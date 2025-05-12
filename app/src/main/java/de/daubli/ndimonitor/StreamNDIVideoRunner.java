@@ -13,6 +13,7 @@ import de.daubli.ndimonitor.decoder.NdiFrameDecoder;
 import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
+import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
 
 import java.nio.ByteBuffer;
 import java.util.logging.Logger;
@@ -27,6 +28,8 @@ public class StreamNDIVideoRunner extends Thread {
     private final FramingHelperOverlayView framingHelperOverlayView;
 
     private final FocusPeakingOverlayView focusPeakingOverlayView;
+
+    private final ZebraOverlayView zebraOverlayView;
     private final StreamNDIVideoActivity activity;
     private Choreographer choreographer;
     private NdiFrameSync frameSync;
@@ -51,10 +54,12 @@ public class StreamNDIVideoRunner extends Thread {
     public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, VideoView videoView,
                                 FramingHelperOverlayView framingHelperOverlayView,
                                 FocusPeakingOverlayView focusPeakingOverlayView,
+                                ZebraOverlayView zebraOverlayView,
                                 StreamNDIVideoActivity activity) {
         super();
         this.ndiVideoNdiSource = ndiVideoNdiSource;
         this.framingHelperOverlayView = framingHelperOverlayView;
+        this.zebraOverlayView = zebraOverlayView;
         this.videoView = videoView;
         this.focusPeakingOverlayView = focusPeakingOverlayView;
         this.activity = activity;
@@ -169,6 +174,10 @@ public class StreamNDIVideoRunner extends Thread {
                 framingHelperOverlayView.setFramingRect(dstRect);
                 if (decodedFrame == null) {
                     return;
+                }
+
+                if (zebraOverlayView.getVisibility() == View.VISIBLE) {
+                    zebraOverlayView.updateFrame(decodedFrame, dstRect);
                 }
 
                 if (focusPeakingOverlayView.getVisibility() == View.VISIBLE) {

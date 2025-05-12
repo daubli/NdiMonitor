@@ -15,6 +15,7 @@ import de.daubli.ndimonitor.settings.SettingsStore;
 import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
+import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
 
 public class StreamNDIVideoActivity extends AppCompatActivity {
     NdiSource ndiVideoNdiSource;
@@ -24,7 +25,11 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
 
     FocusPeakingOverlayView focusPeakingOverlayView;
 
+    ZebraOverlayView zebraOverlayView;
+
     LinearLayout menuLayout;
+
+    ImageButton zebraButton;
     ImageButton toggleFocusAssistButton;
     ImageButton toggleGridButton;
     ImageButton closeButton;
@@ -40,14 +45,20 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
         videoView = findViewById(R.id.videoView);
         ndiFramingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
         focusPeakingOverlayView = findViewById(R.id.focusPeakingOverlayView);
+        zebraOverlayView = findViewById(R.id.zebraOverlayView);
         menuLayout = findViewById(R.id.menu_layout);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        initMenu();
+        setFullScreen();
+        initSavedState();
+    }
+
+    private void initMenu() {
+        initializeZebraButton();
         initializeToggleFocusAssistButton();
         initializeToggleGridButton();
         initializeCloseButton();
         initShowHideMenu();
-        setFullScreen();
-        initSavedState();
     }
 
     private void initSavedState() {
@@ -61,6 +72,10 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
             focusPeakingOverlayView.setVisibility(View.VISIBLE);
             toggleFocusAssistButton.setImageResource(R.drawable.focus_assist_selected);
         }
+        if (settingsStore.isZebraEnabled()) {
+            zebraOverlayView.setVisibility(View.VISIBLE);
+            zebraButton.setImageResource(R.drawable.zebra_selected);
+        }
     }
 
     private void initShowHideMenu() {
@@ -70,6 +85,22 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
             menuLayout.setVisibility(View.VISIBLE);
             menuHandler.removeCallbacks(hideMenuCallback);
             menuHandler.postDelayed(hideMenuCallback, 5000);
+        });
+    }
+
+    private void initializeZebraButton() {
+        this.zebraButton = findViewById(R.id.zebra_button);
+        this.zebraButton.setOnClickListener(view -> {
+            SettingsStore settingsStore = new SettingsStore();
+            if (zebraOverlayView.getVisibility() == View.VISIBLE) {
+                zebraOverlayView.setVisibility(View.GONE);
+                zebraButton.setImageResource(R.drawable.zebra);
+                settingsStore.setZebraEnabled(false);
+            } else {
+                zebraOverlayView.setVisibility(View.VISIBLE);
+                zebraButton.setImageResource(R.drawable.zebra_selected);
+                settingsStore.setZebraEnabled(true);
+            }
         });
     }
 
@@ -138,7 +169,7 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, videoView, ndiFramingHelperOverlayView, focusPeakingOverlayView, this);
+        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, videoView, ndiFramingHelperOverlayView, focusPeakingOverlayView, zebraOverlayView, this);
         runner.start();
     }
 }

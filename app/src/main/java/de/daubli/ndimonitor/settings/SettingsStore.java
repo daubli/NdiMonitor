@@ -18,6 +18,8 @@ public class SettingsStore {
 
     private static final String FOCUS_ASSIST_ENABLED_KEY = "de.daubli.ndimonitor.view.focusassist.enabled";
 
+    private static final String ZEBRA_ENABLED_KEY = "de.daubli.ndimonitor.view.zebra.enabled";
+
     public SettingsStore() {
         sharedPreferences = getAppContext().getSharedPreferences("de.daubli.ndimonitor_preferences",
                 Context.MODE_PRIVATE);
@@ -73,4 +75,19 @@ public class SettingsStore {
         editor.putBoolean(FOCUS_ASSIST_ENABLED_KEY, enabled);
         editor.apply();
     }
+
+    public boolean isZebraEnabled() {
+        if (sharedPreferences.contains(ZEBRA_ENABLED_KEY)) {
+            return sharedPreferences.getBoolean(ZEBRA_ENABLED_KEY, false);
+        }
+        return false;
+    }
+
+    public void setZebraEnabled(boolean enabled) {
+        SharedPreferences.Editor editor = sharedPreferences.edit();
+        editor.putBoolean(ZEBRA_ENABLED_KEY, enabled);
+        editor.apply();
+    }
+
+
 }
