@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor;
+package de.daubli.ndimonitor.ndi;
 
 import android.graphics.Bitmap;
 import android.graphics.Rect;
@@ -7,18 +7,20 @@ import android.os.Handler;
 import android.os.Looper;
 import android.view.Choreographer;
 import android.view.View;
+import de.daubli.ndimonitor.StreamVideoActivity;
+import de.daubli.ndimonitor.StreamVideoRunner;
 import de.daubli.ndimonitor.audio.AudioUtils;
 import de.daubli.ndimonitor.ndi.*;
 import de.daubli.ndimonitor.decoder.NdiFrameDecoder;
+import de.daubli.ndimonitor.sources.VideoSource;
 import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
 import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
 
 import java.nio.ByteBuffer;
-import java.util.logging.Logger;
 
-public class StreamNDIVideoRunner extends Thread {
+public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
     private static final int sampleRate = 48000;
     private static final int channelCount = 2;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -30,7 +32,7 @@ public class StreamNDIVideoRunner extends Thread {
     private final FocusPeakingOverlayView focusPeakingOverlayView;
 
     private final ZebraOverlayView zebraOverlayView;
-    private final StreamNDIVideoActivity activity;
+    private final StreamVideoActivity activity;
     private Choreographer choreographer;
     private NdiFrameSync frameSync;
     private NdiReceiver receiver;
@@ -55,7 +57,7 @@ public class StreamNDIVideoRunner extends Thread {
                                 FramingHelperOverlayView framingHelperOverlayView,
                                 FocusPeakingOverlayView focusPeakingOverlayView,
                                 ZebraOverlayView zebraOverlayView,
-                                StreamNDIVideoActivity activity) {
+                                StreamVideoActivity activity) {
         super();
         this.ndiVideoNdiSource = ndiVideoNdiSource;
         this.framingHelperOverlayView = framingHelperOverlayView;
@@ -142,6 +144,7 @@ public class StreamNDIVideoRunner extends Thread {
         activity.finish();
     }
 
+    @Override
     public void shutdown() {
         running = false;
     }

@@ -1,9 +1,8 @@
 package de.daubli.ndimonitor;
 
-import android.util.Log;
+import android.hardware.usb.UsbDevice;
 import android.view.View;
 import android.widget.*;
-import com.daubli.ndimonitor.R;
 
 import android.content.Intent;
 import android.net.nsd.NsdServiceInfo;
@@ -22,6 +21,10 @@ import de.daubli.ndimonitor.ndi.Ndi;
 import de.daubli.ndimonitor.ndi.NdiFinder;
 import de.daubli.ndimonitor.ndi.NdiSource;
 import de.daubli.ndimonitor.settings.SettingsStore;
+import de.daubli.ndimonitor.sources.VideoSource;
+import de.daubli.ndimonitor.uvc.UVCSource;
+import de.daubli.ndimonitor.uvc.UVCSourceFinder;
+import de.daubli.ndimonitor.usb.UsbDevicePermissionHandler;
 
 import java.util.Arrays;
 import java.util.List;
@@ -30,10 +33,12 @@ import java.util.stream.Collectors;
 public class MainActivity extends AppCompatActivity {
     private NsdManager nsdManager;
     NdiFinder finder;
+
+    UVCSourceFinder uvcSourceFinder;
     ListView sourceListView;
     TextView refreshHint;
     SwipeRefreshLayout mSwipeRefreshLayout;
-    private static NdiSource ndiSource;
+    private static VideoSource selectedSource;
     private SettingsStore settingsStore;
 
     @Override
@@ -60,38 +65,71 @@ public class MainActivity extends AppCompatActivity {
     private void refreshSourcesAndUpdateList() {
         final Runnable r = () -> {
             runOnUiThread(() -> mSwipeRefreshLayout.setRefreshing(true));
+
+            // Close previous finder
             if (this.finder != null) {
                 this.finder.close();
+                this.finder = null;
             }
-            this.finder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
-            NdiSource[] sources = refreshAndReturnSources();
-            List<String> sourceList =
-                    Arrays.stream(sources).map(NdiSource::getSourceName).collect(Collectors.toList());
+
+            // Initialize new finders (ensure they are fully ready before proceeding)
+            NdiFinder newFinder = new NdiFinder(false, null, settingsStore.getAdditionalSources());
+            UVCSourceFinder newUvcFinder = new UVCSourceFinder(this);
+
+            // Assign to class fields only after successful creation
+            this.finder = newFinder;
+            this.uvcSourceFinder = newUvcFinder;
+
+            // Now it's safe to use the finder
+            de.daubli.ndimonitor.sources.VideoSource[] sources = refreshAndReturnSources();
+
+            // Store actual VideoSource objects for later reference
+            List<de.daubli.ndimonitor.sources.VideoSource> sourceList = Arrays.asList(sources);
+            List<String> sourceNames = sourceList.stream()
+                    .map(de.daubli.ndimonitor.sources.VideoSource::getSourceName)
+                    .collect(Collectors.toList());
+
             runOnUiThread(() -> {
                 ArrayAdapter<String> refreshedSourceArray =
-                        new ArrayAdapter<>(this, R.layout.support_simple_spinner_dropdown_item, sourceList);
+                        new ArrayAdapter<>(this, R.layout.support_simple_spinner_dropdown_item, sourceNames);
                 sourceListView.setAdapter(refreshedSourceArray);
 
-                if (!sourceList.isEmpty()) {
-                    refreshHint.setVisibility(View.GONE);
-                } else {
-                    refreshHint.setVisibility(View.VISIBLE);
-                }
+                refreshHint.setVisibility(sourceNames.isEmpty() ? View.VISIBLE : View.GONE);
 
                 sourceListView.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-                    try {
-                        setCurrentSource(finder.getFromQueriedSources(position));
-                        beginStreaming();
-                    } catch (IllegalArgumentException iag) {
-                        Snackbar.make(sourceListView, "Source unavailable. Please refresh.", Snackbar.LENGTH_LONG).show();
+                    VideoSource selectedSource = sourceList.get(position);
+
+                    if (selectedSource instanceof NdiSource) {
+                        try {
+                            selectVideoSource(finder.getFromQueriedSources(selectedSource.getSourceName()));
+                            beginStreaming();
+                        } catch (IllegalArgumentException iag) {
+                            Snackbar.make(sourceListView, "Source unavailable. Please refresh.", Snackbar.LENGTH_LONG).show();
+                        }
+                    } else {
+                        selectVideoSource(selectedSource);
+                        UsbDevicePermissionHandler permissionHandler = new UsbDevicePermissionHandler(this);
+                        permissionHandler.requestPermission(((UVCSource) selectedSource).getUsbDevice(), new UsbDevicePermissionHandler.Callback() {
+                            @Override
+                            public void onPermissionGranted(UsbDevice device) {
+                                beginStreaming();
+                            }
+
+                            @Override
+                            public void onPermissionDenied(UsbDevice device) {
+                                Snackbar.make(sourceListView, "USB permission denied.", Snackbar.LENGTH_LONG).show();
+                            }
+                        });
                     }
                 });
+
+
                 mSwipeRefreshLayout.setRefreshing(false);
             });
         };
-        Thread t = new Thread(r);
-        t.start();
+        new Thread(r).start();
     }
+
 
     @Override
     protected void onDestroy() {
@@ -99,17 +137,27 @@ public class MainActivity extends AppCompatActivity {
         this.finder.close();
     }
 
-    public static NdiSource getSource() {
-        return ndiSource;
+    public static VideoSource getSource() {
+        return selectedSource;
     }
 
-    public NdiSource[] refreshAndReturnSources() {
+    public de.daubli.ndimonitor.sources.VideoSource[] refreshAndReturnSources() {
         finder.waitForSources(5000);
-        return finder.getCurrentSources();
+
+        VideoSource[] ndiSources = finder.getCurrentSources();
+        UVCSource[] uvcSources = uvcSourceFinder.getUvcSources();
+
+        int totalLength = ndiSources.length + uvcSources.length;
+        de.daubli.ndimonitor.sources.VideoSource[] resultVideoSources = new de.daubli.ndimonitor.sources.VideoSource[totalLength];
+
+        System.arraycopy(ndiSources, 0, resultVideoSources, 0, ndiSources.length);
+        System.arraycopy(uvcSources, 0, resultVideoSources, ndiSources.length, uvcSources.length);
+
+        return resultVideoSources;
     }
 
     public void beginStreaming() {
-        Intent streamingIntent = new Intent(this, StreamNDIVideoActivity.class);
+        Intent streamingIntent = new Intent(this, StreamVideoActivity.class);
         MainActivity.this.startActivity(streamingIntent);
     }
 
@@ -133,8 +181,8 @@ public class MainActivity extends AppCompatActivity {
         return true;
     }
 
-    public static void setCurrentSource(NdiSource ndiSourceToSet) {
-        ndiSource = ndiSourceToSet;
+    public static void selectVideoSource(VideoSource videoSource) {
+        selectedSource = videoSource;
     }
 
     private void registerNsdKeepAliveService() {

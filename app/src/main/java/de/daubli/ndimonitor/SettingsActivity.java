@@ -1,7 +1,5 @@
 package de.daubli.ndimonitor;
 
-import com.daubli.ndimonitor.R;
-
 import android.app.Activity;
 import android.os.Bundle;
 import android.view.View;

@@ -1,27 +1,32 @@
 package de.daubli.ndimonitor;
 
-import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import com.daubli.ndimonitor.R;
-
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.view.*;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import androidx.appcompat.app.AppCompatActivity;
 import de.daubli.ndimonitor.ndi.NdiSource;
+import de.daubli.ndimonitor.ndi.StreamNDIVideoRunner;
 import de.daubli.ndimonitor.settings.SettingsStore;
-import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
+import de.daubli.ndimonitor.sources.VideoSource;
+import de.daubli.ndimonitor.uvc.StreamUvcVideoRunner;
+import de.daubli.ndimonitor.uvc.UVCSource;
 import de.daubli.ndimonitor.view.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
+import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
 
-public class StreamNDIVideoActivity extends AppCompatActivity {
-    NdiSource ndiVideoNdiSource;
+public class StreamVideoActivity extends AppCompatActivity {
+    VideoSource videoSource;
     VideoView videoView;
 
-    FramingHelperOverlayView ndiFramingHelperOverlayView;
+    FramingHelperOverlayView framingHelperOverlayView;
 
     FocusPeakingOverlayView focusPeakingOverlayView;
 
@@ -33,17 +38,17 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     ImageButton toggleFocusAssistButton;
     ImageButton toggleGridButton;
     ImageButton closeButton;
-    private StreamNDIVideoRunner runner;
+    private StreamVideoRunner runner;
     private Handler menuHandler;
     private Runnable hideMenuCallback;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        ndiVideoNdiSource = MainActivity.getSource();
-        setContentView(R.layout.stream_ndi_video_activity);
+        videoSource = MainActivity.getSource();
+        setContentView(R.layout.stream_video_activity);
         videoView = findViewById(R.id.videoView);
-        ndiFramingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
+        framingHelperOverlayView = findViewById(R.id.framingHelperOverlayView);
         focusPeakingOverlayView = findViewById(R.id.focusPeakingOverlayView);
         zebraOverlayView = findViewById(R.id.zebraOverlayView);
         menuLayout = findViewById(R.id.menu_layout);
@@ -64,9 +69,9 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     private void initSavedState() {
         SettingsStore settingsStore = new SettingsStore();
         if (settingsStore.isFramingHelperOverlayEnabled()) {
-            ndiFramingHelperOverlayView.setVisibility(View.VISIBLE);
+            framingHelperOverlayView.setVisibility(View.VISIBLE);
             toggleGridButton.setImageResource(R.drawable.grid_icon_3x3_selected);
-            ndiFramingHelperOverlayView.toggleFramingHelper();
+            framingHelperOverlayView.toggleFramingHelper();
         }
         if (settingsStore.isFocusAssistEnabled()) {
             focusPeakingOverlayView.setVisibility(View.VISIBLE);
@@ -124,16 +129,16 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
         this.toggleGridButton = findViewById(R.id.grid_button);
         this.toggleGridButton.setOnClickListener(view -> {
             SettingsStore settingsStore = new SettingsStore();
-            if (ndiFramingHelperOverlayView.getVisibility() == View.VISIBLE) {
-                ndiFramingHelperOverlayView.setVisibility(View.GONE);
+            if (framingHelperOverlayView.getVisibility() == View.VISIBLE) {
+                framingHelperOverlayView.setVisibility(View.GONE);
                 toggleGridButton.setImageResource(R.drawable.grid_icon_3x3);
                 settingsStore.setFramingHelperOverlayEnabled(false);
             } else {
-                ndiFramingHelperOverlayView.setVisibility(View.VISIBLE);
+                framingHelperOverlayView.setVisibility(View.VISIBLE);
                 toggleGridButton.setImageResource(R.drawable.grid_icon_3x3_selected);
                 settingsStore.setFramingHelperOverlayEnabled(true);
             }
-            ndiFramingHelperOverlayView.toggleFramingHelper();
+            framingHelperOverlayView.toggleFramingHelper();
         });
     }
 
@@ -169,7 +174,13 @@ public class StreamNDIVideoActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        runner = new StreamNDIVideoRunner(ndiVideoNdiSource, videoView, ndiFramingHelperOverlayView, focusPeakingOverlayView, zebraOverlayView, this);
-        runner.start();
+
+        if (videoSource instanceof NdiSource) {
+            runner = new StreamNDIVideoRunner((NdiSource) videoSource, videoView, framingHelperOverlayView, focusPeakingOverlayView, zebraOverlayView, this);
+            runner.start();
+        } else {
+            runner = new StreamUvcVideoRunner((UVCSource) videoSource, videoView, framingHelperOverlayView, focusPeakingOverlayView, zebraOverlayView, this);
+            runner.start();
+        }
     }
 }

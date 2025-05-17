@@ -2,9 +2,11 @@
 
 package de.daubli.ndimonitor.ndi;
 
+import de.daubli.ndimonitor.sources.VideoSource;
+
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public class NdiSource {
+public class NdiSource implements VideoSource {
 
     private final AtomicBoolean isClosed;
 
@@ -15,6 +17,7 @@ public class NdiSource {
         this.instancePointer = pointer;
     }
 
+    @Override
     public String getSourceName() {
         if (isClosed.get()) {
             throw new IllegalStateException("Cannot read source name. Source seems to be closed.");

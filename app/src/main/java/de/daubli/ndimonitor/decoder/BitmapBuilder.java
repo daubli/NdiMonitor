@@ -7,13 +7,19 @@ import de.daubli.ndimonitor.ndi.NdiVideoFrame;
 import io.github.crow_misia.libyuv.AbgrBuffer;
 import io.github.crow_misia.libyuv.ArgbBuffer;
 
+import java.nio.ByteBuffer;
 import java.util.logging.Logger;
 
 public abstract class BitmapBuilder {
     static Logger LOG = Logger.getLogger(BitmapBuilder.class.getSimpleName());
     int width = 0;
     int height = 0;
+
+    int sourceWidth = 0;
+
+    int sourceHeight = 0;
     NdiVideoFrame frame;
+    ByteBuffer rawData;
 
     public BitmapBuilder withWidth(int width) {
         this.width = width;
@@ -27,6 +33,11 @@ public abstract class BitmapBuilder {
 
     public BitmapBuilder withFrame(NdiVideoFrame frame) {
         this.frame = frame;
+        return this;
+    }
+
+    public BitmapBuilder withRawData(ByteBuffer buffer) {
+        this.rawData = buffer;
         return this;
     }
 

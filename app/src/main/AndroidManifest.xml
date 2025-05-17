@@ -1,7 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.daubli.ndimonitor">
+          package="de.daubli.ndimonitor">
+    <uses-sdk android:minSdkVersion="25" android:targetSdkVersion="33"/>
+    <uses-feature android:name="android.hardware.usb.host"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.CAMERA"/>
     <application
             android:allowBackup="true"
             android:icon="@mipmap/ic_launcher"
@@ -21,13 +25,17 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
         </activity>
         <activity
-                android:name="de.daubli.ndimonitor.StreamNDIVideoActivity"
+                android:name="de.daubli.ndimonitor.StreamVideoActivity"
                 android:screenOrientation="landscape"
                 android:exported="true"
                 android:theme="@style/Theme.AppCompat.NoActionBar"
-        />
+        >
+        </activity>
         <activity
                 android:name="de.daubli.ndimonitor.SettingsActivity"
                 android:exported="true"
@@ -39,5 +47,4 @@
                 android:theme="@style/Theme.NdiFinder"
         />
     </application>
-
 </manifest>
