@@ -12,12 +12,6 @@
             android:layout_height="match_parent"
             android:visibility="invisible"/>
 
-    <de.daubli.ndimonitor.view.FramingHelperOverlayView
-            android:id="@+id/framingHelperOverlayView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"/>
-
     <de.daubli.ndimonitor.view.zebra.ZebraOverlayView
             android:id="@+id/zebraOverlayView"
             android:layout_width="match_parent"
@@ -26,6 +20,12 @@
 
     <de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView
             android:id="@+id/focusPeakingOverlayView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="invisible"/>
+
+    <de.daubli.ndimonitor.view.FramingHelperOverlayView
+            android:id="@+id/framingHelperOverlayView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:visibility="invisible"/>
