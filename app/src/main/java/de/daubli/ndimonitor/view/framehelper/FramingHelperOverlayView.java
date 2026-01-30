@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.view; // Replace with your actual package name
+package de.daubli.ndimonitor.view.framehelper; // Replace with your actual package name
 
 import android.content.Context;
 import android.graphics.Canvas;

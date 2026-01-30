@@ -14,8 +14,8 @@
             android:supportsRtl="true"
             android:name="de.daubli.ndimonitor.NdiMonitorApplication"
             android:largeHeap="true"
+            android:hardwareAccelerated="true"
             android:vmSafeMode="true">
-
         >
         <activity
                 android:name="de.daubli.ndimonitor.MainActivity"

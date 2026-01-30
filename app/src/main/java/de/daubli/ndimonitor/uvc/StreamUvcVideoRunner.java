@@ -8,8 +8,9 @@ import android.view.Choreographer;
 import android.view.View;
 import de.daubli.ndimonitor.StreamVideoActivity;
 import de.daubli.ndimonitor.StreamVideoRunner;
+import de.daubli.ndimonitor.databinding.StreamVideoActivityBinding;
 import de.daubli.ndimonitor.decoder.MJpegBitmapBuilder;
-import de.daubli.ndimonitor.view.FramingHelperOverlayView;
+import de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
 import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
 import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
@@ -37,16 +38,13 @@ public class StreamUvcVideoRunner extends Thread implements StreamVideoRunner {
     };
 
     public StreamUvcVideoRunner(UVCSource uvcSource,
-                                VideoView videoView,
-                                FramingHelperOverlayView framingHelperOverlayView,
-                                FocusPeakingOverlayView focusPeakingOverlayView,
-                                ZebraOverlayView zebraOverlayView,
+                                StreamVideoActivityBinding streamVideoActivityBinding,
                                 StreamVideoActivity activity) {
         this.captureManager = new UvcCaptureManager(uvcSource, activity);
-        this.videoView = videoView;
-        this.framingHelperOverlayView = framingHelperOverlayView;
-        this.zebraOverlayView = zebraOverlayView;
-        this.focusPeakingOverlayView = focusPeakingOverlayView;
+        this.videoView = streamVideoActivityBinding.videoView;
+        this.framingHelperOverlayView = streamVideoActivityBinding.framingHelperOverlayView;
+        this.zebraOverlayView = streamVideoActivityBinding.zebraOverlayView;
+        this.focusPeakingOverlayView = streamVideoActivityBinding.focusPeakingOverlayView;
         this.activity = activity;
     }
 

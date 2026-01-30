@@ -139,7 +139,7 @@ public class FocusPeakingShader {
 
         int thresholdHandle = GLES20.glGetUniformLocation(program, "threshold");
         if (thresholdHandle != -1) {
-            GLES20.glUniform1f(thresholdHandle, 0.7f); // 70% Kantenstärke
+            GLES20.glUniform1f(thresholdHandle, 0.7f); // 70% threshold
         }
 
         int posHandle = GLES20.glGetAttribLocation(program, "aPosition");

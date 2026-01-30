@@ -10,11 +10,10 @@ import android.view.View;
 import de.daubli.ndimonitor.StreamVideoActivity;
 import de.daubli.ndimonitor.StreamVideoRunner;
 import de.daubli.ndimonitor.audio.AudioUtils;
-import de.daubli.ndimonitor.ndi.*;
+import de.daubli.ndimonitor.databinding.StreamVideoActivityBinding;
 import de.daubli.ndimonitor.decoder.NdiFrameDecoder;
-import de.daubli.ndimonitor.sources.VideoSource;
 import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
-import de.daubli.ndimonitor.view.FramingHelperOverlayView;
+import de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView;
 import de.daubli.ndimonitor.view.VideoView;
 import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
 
@@ -53,17 +52,14 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
         if (choreographer != null) choreographer.removeFrameCallback(this.frameCallback);
     };
 
-    public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, VideoView videoView,
-                                FramingHelperOverlayView framingHelperOverlayView,
-                                FocusPeakingOverlayView focusPeakingOverlayView,
-                                ZebraOverlayView zebraOverlayView,
+    public StreamNDIVideoRunner(NdiSource ndiVideoNdiSource, StreamVideoActivityBinding streamVideoActivityBinding,
                                 StreamVideoActivity activity) {
         super();
         this.ndiVideoNdiSource = ndiVideoNdiSource;
-        this.framingHelperOverlayView = framingHelperOverlayView;
-        this.zebraOverlayView = zebraOverlayView;
-        this.videoView = videoView;
-        this.focusPeakingOverlayView = focusPeakingOverlayView;
+        this.framingHelperOverlayView = streamVideoActivityBinding.framingHelperOverlayView;
+        this.zebraOverlayView = streamVideoActivityBinding.zebraOverlayView;
+        this.videoView = streamVideoActivityBinding.videoView;
+        this.focusPeakingOverlayView = streamVideoActivityBinding.focusPeakingOverlayView;
         this.activity = activity;
     }
 
