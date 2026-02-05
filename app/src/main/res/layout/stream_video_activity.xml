@@ -48,8 +48,9 @@
 
         <ImageButton
                 android:id="@+id/zebra_button"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="4dp"
                 android:src="@drawable/zebra"
                 android:background="@android:color/transparent"
                 android:layout_marginEnd="10dp"
@@ -58,8 +59,9 @@
 
         <ImageButton
                 android:id="@+id/focus_assist_button"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="4dp"
                 android:src="@drawable/focus_assist"
                 android:background="@android:color/transparent"
                 android:layout_marginEnd="10dp"
@@ -68,8 +70,9 @@
 
         <ImageButton
                 android:id="@+id/grid_button"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:layout_marginTop="4dp"
                 android:src="@drawable/grid_icon_3x3"
                 android:background="@android:color/transparent"
                 android:layout_marginEnd="10dp"
