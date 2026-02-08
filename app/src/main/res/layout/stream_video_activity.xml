@@ -1,90 +1,97 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-             xmlns:tools="http://schemas.android.com/tools"
-             android:layout_width="match_parent"
-             android:layout_height="match_parent"
-             tools:context=".StreamVideoActivity">
+			 xmlns:tools="http://schemas.android.com/tools"
+			 android:layout_width="match_parent"
+			 android:layout_height="match_parent"
+			 tools:context=".StreamVideoActivity">
 
-    <de.daubli.ndimonitor.view.VideoView
-            android:id="@+id/videoView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"/>
+	<de.daubli.ndimonitor.view.video.bitmap.BitmapVideoView
+			android:id="@+id/bitmapVideoView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="invisible"
+	/>
 
-    <de.daubli.ndimonitor.view.zebra.ZebraOverlayView
-            android:id="@+id/zebraOverlayView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"/>
+	<de.daubli.ndimonitor.view.video.opengl.OpenGLVideoView
+			android:id="@+id/openGLVideoView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="invisible"/>
 
-    <de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView
-            android:id="@+id/focusPeakingOverlayView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"/>
+	<de.daubli.ndimonitor.view.zebra.ZebraOverlayView
+			android:id="@+id/zebraOverlayView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="invisible"/>
 
-    <de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView
-            android:id="@+id/framingHelperOverlayView"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="invisible"/>
+	<de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView
+			android:id="@+id/focusPeakingOverlayView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="invisible"/>
 
-    <!-- Horizontal layout for the buttons -->
-    <LinearLayout
-            android:id="@+id/menu_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_gravity="bottom"
-            android:orientation="horizontal"
-            android:layout_marginEnd="16dp"
-            android:visibility="invisible"
-            android:background="#80000000"
-    >
+	<de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView
+			android:id="@+id/framingHelperOverlayView"
+			android:layout_width="match_parent"
+			android:layout_height="match_parent"
+			android:visibility="invisible"/>
 
-        <Space
-                android:layout_width="0dp"
-                android:layout_height="45dp" android:layout_weight="1"
-        />
+	<!-- Horizontal layout for the buttons -->
+	<LinearLayout
+			android:id="@+id/menu_layout"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:layout_gravity="bottom"
+			android:orientation="horizontal"
+			android:layout_marginEnd="16dp"
+			android:visibility="invisible"
+			android:background="#80000000"
+	>
 
-        <ImageButton
-                android:id="@+id/zebra_button"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginTop="4dp"
-                android:src="@drawable/zebra"
-                android:background="@android:color/transparent"
-                android:layout_marginEnd="10dp"
-                android:scaleType="fitXY"
-        />
+		<Space
+				android:layout_width="0dp"
+				android:layout_height="45dp" android:layout_weight="1"
+		/>
 
-        <ImageButton
-                android:id="@+id/focus_assist_button"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginTop="4dp"
-                android:src="@drawable/focus_assist"
-                android:background="@android:color/transparent"
-                android:layout_marginEnd="10dp"
-                android:scaleType="fitXY"
-        />
+		<ImageButton
+				android:id="@+id/zebra_button"
+				android:layout_width="36dp"
+				android:layout_height="36dp"
+				android:layout_marginTop="4dp"
+				android:src="@drawable/zebra"
+				android:background="@android:color/transparent"
+				android:layout_marginEnd="10dp"
+				android:scaleType="fitXY"
+		/>
 
-        <ImageButton
-                android:id="@+id/grid_button"
-                android:layout_width="36dp"
-                android:layout_height="36dp"
-                android:layout_marginTop="4dp"
-                android:src="@drawable/grid_icon_3x3"
-                android:background="@android:color/transparent"
-                android:layout_marginEnd="10dp"
-                android:scaleType="fitXY"
-        />
+		<ImageButton
+				android:id="@+id/focus_assist_button"
+				android:layout_width="36dp"
+				android:layout_height="36dp"
+				android:layout_marginTop="4dp"
+				android:src="@drawable/focus_assist"
+				android:background="@android:color/transparent"
+				android:layout_marginEnd="10dp"
+				android:scaleType="fitXY"
+		/>
 
-        <ImageButton
-                android:id="@+id/close_button"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:src="@android:drawable/ic_menu_close_clear_cancel"
-                android:background="@android:color/transparent"/>
-    </LinearLayout>
+		<ImageButton
+				android:id="@+id/grid_button"
+				android:layout_width="36dp"
+				android:layout_height="36dp"
+				android:layout_marginTop="4dp"
+				android:src="@drawable/grid_icon_3x3"
+				android:background="@android:color/transparent"
+				android:layout_marginEnd="10dp"
+				android:scaleType="fitXY"
+		/>
+
+		<ImageButton
+				android:id="@+id/close_button"
+				android:layout_width="40dp"
+				android:layout_height="40dp"
+				android:src="@android:drawable/ic_menu_close_clear_cancel"
+				android:background="@android:color/transparent"/>
+	</LinearLayout>
 
 </FrameLayout>

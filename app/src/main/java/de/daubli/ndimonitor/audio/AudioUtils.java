@@ -33,4 +33,13 @@ public class AudioUtils {
 
         return pcmBuffer;
     }
+
+    public static boolean isSilentFast(byte[] pcm) {
+        for (int i = 0; i < pcm.length; i += 32) { // check every 16th sample
+            if (pcm[i] != 0 || pcm[i + 1] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

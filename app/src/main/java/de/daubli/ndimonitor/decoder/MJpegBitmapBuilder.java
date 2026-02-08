@@ -1,70 +1,45 @@
 package de.daubli.ndimonitor.decoder;
 
+import java.nio.ByteBuffer;
+
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
-import io.github.crow_misia.libyuv.ArgbBuffer;
-import io.github.crow_misia.libyuv.FilterMode;
-import io.github.crow_misia.libyuv.I420Buffer;
-
-import java.nio.ByteBuffer;
+import androidx.annotation.Nullable;
 
 /*
     This class is only needed to create bitmaps out of a UVC stream. NDI does never deliver YUY2 Data
  */
-public class MJpegBitmapBuilder extends BitmapBuilder {
+public class MJpegBitmapBuilder {
+
+    ByteBuffer rawData;
 
     public static MJpegBitmapBuilder builder() {
         return new MJpegBitmapBuilder();
     }
 
-    @Override
+    public MJpegBitmapBuilder withRawData(ByteBuffer buffer) {
+        this.rawData = buffer;
+        return this;
+    }
+
+    @Nullable
     public Bitmap build() {
         if (rawData == null) {
             throw new IllegalStateException("No input data provided.");
         }
 
-        Bitmap unscaledBitmap = decodeMjpeg(this.rawData);
-        this.sourceWidth = unscaledBitmap.getWidth();
-        this.sourceHeight = unscaledBitmap.getHeight();
-
-        if (this.sourceWidth == this.width && this.sourceHeight == this.height) {
-            return unscaledBitmap;
-        }
-
-        ByteBuffer unscaledBuffer = ByteBuffer.allocateDirect(sourceWidth * sourceHeight * 4); // 4 bytes per pixel
-        unscaledBitmap.copyPixelsToBuffer(unscaledBuffer);
-        unscaledBuffer.rewind();
-
-        ArgbBuffer argbBuffer = ArgbBuffer.Factory.wrap(unscaledBuffer, sourceWidth, sourceHeight);
-        unscaledBuffer.clear();
-
-        I420Buffer i420Buffer = I420Buffer.Factory.allocate(this.sourceWidth, this.sourceHeight);
-        argbBuffer.convertTo(i420Buffer);
-        argbBuffer.close();
-
-        I420Buffer scaledBuffer = I420Buffer.Factory.allocate(width, height);
-        i420Buffer.scale(scaledBuffer, FilterMode.LINEAR);
-        i420Buffer.close();
-
-        ArgbBuffer scaledArgbBuffer = ArgbBuffer.Factory.allocate(width, height);
-        scaledBuffer.convertTo(scaledArgbBuffer);
-        scaledBuffer.close();
-
-        Bitmap bitmap = buildBitmapFromArgbBuffer(scaledArgbBuffer);
-        argbBuffer.close();
-
-        return bitmap;
+        return decodeMjpeg(this.rawData);
     }
 
     private Bitmap decodeMjpeg(ByteBuffer buffer) {
-        if (buffer == null || !buffer.hasRemaining()) return null;
-
-        // ByteBuffer → byte[]
+        if (buffer == null || !buffer.hasRemaining()) {
+            return null;
+        }
+        
         byte[] data = new byte[buffer.remaining()];
         buffer.get(data);
 
-        // Start & Ende des JPEG im ByteArray suchen
         int start = findJpegSOI(data);
         int end = findJpegEOI(data);
 
@@ -80,7 +55,6 @@ public class MJpegBitmapBuilder extends BitmapBuilder {
         Log.e("UvcCapture", "Could not find valid JPEG segment in ByteBuffer");
         return null;
     }
-
 
     private int findJpegSOI(byte[] data) {
         for (int i = 0; i < data.length - 1; i++) {
