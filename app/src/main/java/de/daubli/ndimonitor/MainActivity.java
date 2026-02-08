@@ -1,51 +1,52 @@
 package de.daubli.ndimonitor;
 
-import android.hardware.usb.UsbDevice;
-import android.view.View;
-import android.widget.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import com.google.android.material.snackbar.Snackbar;
 
 import android.content.Intent;
-import android.net.nsd.NsdServiceInfo;
+import android.hardware.usb.UsbDevice;
+import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
-
-import android.content.Context;
-import android.net.nsd.NsdManager;
-import android.os.Bundle;
-
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
-import com.google.android.material.snackbar.Snackbar;
 import de.daubli.ndimonitor.ndi.Ndi;
 import de.daubli.ndimonitor.ndi.NdiFinder;
 import de.daubli.ndimonitor.ndi.NdiSource;
 import de.daubli.ndimonitor.settings.SettingsStore;
 import de.daubli.ndimonitor.sources.VideoSource;
+import de.daubli.ndimonitor.usb.UsbDevicePermissionHandler;
 import de.daubli.ndimonitor.uvc.UVCSource;
 import de.daubli.ndimonitor.uvc.UVCSourceFinder;
-import de.daubli.ndimonitor.usb.UsbDevicePermissionHandler;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
-    private NsdManager nsdManager;
+
     NdiFinder finder;
 
     UVCSourceFinder uvcSourceFinder;
+
     ListView sourceListView;
+
     TextView refreshHint;
+
     SwipeRefreshLayout mSwipeRefreshLayout;
+
     private static VideoSource selectedSource;
+
     private SettingsStore settingsStore;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        nsdManager = (NsdManager) getSystemService(Context.NSD_SERVICE);
-        registerNsdKeepAliveService();
         setContentView(R.layout.activity_main);
         this.sourceListView = this.findViewById(R.id.sourceListView);
         this.refreshHint = this.findViewById(R.id.refreshHint);
@@ -85,13 +86,12 @@ public class MainActivity extends AppCompatActivity {
 
             // Store actual VideoSource objects for later reference
             List<de.daubli.ndimonitor.sources.VideoSource> sourceList = Arrays.asList(sources);
-            List<String> sourceNames = sourceList.stream()
-                    .map(de.daubli.ndimonitor.sources.VideoSource::getSourceName)
+            List<String> sourceNames = sourceList.stream().map(de.daubli.ndimonitor.sources.VideoSource::getSourceName)
                     .collect(Collectors.toList());
 
             runOnUiThread(() -> {
-                ArrayAdapter<String> refreshedSourceArray =
-                        new ArrayAdapter<>(this, R.layout.support_simple_spinner_dropdown_item, sourceNames);
+                ArrayAdapter<String> refreshedSourceArray = new ArrayAdapter<>(this,
+                        R.layout.support_simple_spinner_dropdown_item, sourceNames);
                 sourceListView.setAdapter(refreshedSourceArray);
 
                 refreshHint.setVisibility(sourceNames.isEmpty() ? View.VISIBLE : View.GONE);
@@ -104,32 +104,34 @@ public class MainActivity extends AppCompatActivity {
                             selectVideoSource(finder.getFromQueriedSources(selectedSource.getSourceName()));
                             beginStreaming();
                         } catch (IllegalArgumentException iag) {
-                            Snackbar.make(sourceListView, "Source unavailable. Please refresh.", Snackbar.LENGTH_LONG).show();
+                            Snackbar.make(sourceListView, "Source unavailable. Please refresh.", Snackbar.LENGTH_LONG)
+                                    .show();
                         }
                     } else {
                         selectVideoSource(selectedSource);
                         UsbDevicePermissionHandler permissionHandler = new UsbDevicePermissionHandler(this);
-                        permissionHandler.requestPermission(((UVCSource) selectedSource).getUsbDevice(), new UsbDevicePermissionHandler.Callback() {
-                            @Override
-                            public void onPermissionGranted(UsbDevice device) {
-                                beginStreaming();
-                            }
+                        permissionHandler.requestPermission(((UVCSource) selectedSource).getUsbDevice(),
+                                new UsbDevicePermissionHandler.Callback() {
 
-                            @Override
-                            public void onPermissionDenied(UsbDevice device) {
-                                Snackbar.make(sourceListView, "USB permission denied.", Snackbar.LENGTH_LONG).show();
-                            }
-                        });
+                                    @Override
+                                    public void onPermissionGranted(UsbDevice device) {
+                                        beginStreaming();
+                                    }
+
+                                    @Override
+                                    public void onPermissionDenied(UsbDevice device) {
+                                        Snackbar.make(sourceListView, "USB permission denied.", Snackbar.LENGTH_LONG)
+                                                .show();
+                                    }
+                                });
                     }
                 });
-
 
                 mSwipeRefreshLayout.setRefreshing(false);
             });
         };
         new Thread(r).start();
     }
-
 
     @Override
     protected void onDestroy() {
@@ -183,31 +185,5 @@ public class MainActivity extends AppCompatActivity {
 
     public static void selectVideoSource(VideoSource videoSource) {
         selectedSource = videoSource;
-    }
-
-    private void registerNsdKeepAliveService() {
-        //hack to keep nsd daemon alive
-        NsdServiceInfo nsdServiceInfo = new NsdServiceInfo();
-        nsdServiceInfo.setServiceName("KeepAliveService");
-        nsdServiceInfo.setServiceType("_keep_alive._tcp");
-        nsdServiceInfo.setPort(12345);
-
-        nsdManager.registerService(nsdServiceInfo, NsdManager.PROTOCOL_DNS_SD, new NsdManager.RegistrationListener() {
-            @Override
-            public void onRegistrationFailed(NsdServiceInfo nsdServiceInfo, int i) {
-            }
-
-            @Override
-            public void onUnregistrationFailed(NsdServiceInfo nsdServiceInfo, int i) {
-            }
-
-            @Override
-            public void onServiceRegistered(NsdServiceInfo nsdServiceInfo) {
-            }
-
-            @Override
-            public void onServiceUnregistered(NsdServiceInfo nsdServiceInfo) {
-            }
-        });
     }
 }
