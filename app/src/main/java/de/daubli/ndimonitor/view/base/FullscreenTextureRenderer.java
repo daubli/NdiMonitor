@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.view.video.opengl;
+package de.daubli.ndimonitor.view.base;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

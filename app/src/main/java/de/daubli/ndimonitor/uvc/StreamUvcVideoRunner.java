@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import android.graphics.Bitmap;
-import android.graphics.Rect;
 import android.os.Handler;
 import android.os.Looper;
 import android.view.View;
@@ -15,71 +14,85 @@ import de.daubli.ndimonitor.StreamVideoActivity;
 import de.daubli.ndimonitor.StreamVideoRunner;
 import de.daubli.ndimonitor.databinding.StreamVideoActivityBinding;
 import de.daubli.ndimonitor.decoder.MJpegBitmapBuilder;
-import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
-import de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView;
-import de.daubli.ndimonitor.view.video.bitmap.BitmapVideoView;
-import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
+import de.daubli.ndimonitor.ndi.FourCCType;
+import de.daubli.ndimonitor.view.base.OpenGLVideoView;
+import de.daubli.ndimonitor.view.overlays.framehelper.FramingHelperOverlayView;
 
 public class StreamUvcVideoRunner extends Thread implements StreamVideoRunner {
 
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-    private final BitmapVideoView videoView;
-
-    private final FramingHelperOverlayView framingHelperOverlayView;
-
-    private final FocusPeakingOverlayView focusPeakingOverlayView;
-
-    private final ZebraOverlayView zebraOverlayView;
+    private final OpenGLVideoView openGLVideoView;
 
     private final StreamVideoActivity activity;
 
     private final UvcCaptureManager captureManager;
 
-    private final AtomicReference<Bitmap> latestBitmap = new AtomicReference<>();
-
     private final ExecutorService decodeExecutor = Executors.newSingleThreadExecutor();
 
     private final AtomicBoolean decodeInProgress = new AtomicBoolean(false);
 
+    private final AtomicReference<Frame> latestFrame = new AtomicReference<>();
+
+    private final FramingHelperOverlayView framingHelperOverlayView;
+
     private volatile boolean running = true;
+
+    private static final class Frame {
+
+        final ByteBuffer rgba;
+
+        final int width;
+
+        final int height;
+
+        Frame(ByteBuffer rgba, int width, int height) {
+            this.rgba = rgba;
+            this.width = width;
+            this.height = height;
+        }
+    }
 
     public StreamUvcVideoRunner(UVCSource uvcSource, StreamVideoActivityBinding binding, StreamVideoActivity activity) {
         this.captureManager = new UvcCaptureManager(uvcSource, activity);
-        this.videoView = binding.bitmapVideoView;
+        this.openGLVideoView = binding.openGLVideoView;
         this.framingHelperOverlayView = binding.framingHelperOverlayView;
-        this.zebraOverlayView = binding.zebraOverlayView;
-        this.focusPeakingOverlayView = binding.focusPeakingOverlayView;
         this.activity = activity;
     }
 
     @Override
     public void run() {
         captureManager.start(data -> {
-
-            // Drop frame if decoder is busy -> when decoder is free, set the flag to true
             if (!decodeInProgress.compareAndSet(false, true)) {
                 return;
             }
 
-            ByteBuffer buffer = ByteBuffer.wrap(data.clone());
+            // Copy MJPEG bytes because capture buffer might be reused by the producer
+            byte[] mjpeg = data.clone();
 
             decodeExecutor.execute(() -> {
                 try {
-                    Bitmap bitmap = MJpegBitmapBuilder.builder().withRawData(buffer).build();
+                    // Decode MJPEG -> Bitmap
+                    Bitmap bmp = MJpegBitmapBuilder.builder().withRawData(ByteBuffer.wrap(mjpeg)).build();
 
-                    if (bitmap != null) {
-                        Bitmap old = latestBitmap.getAndSet(bitmap);
-                        if (old != null) {
-                            old.recycle();
-                        }
+                    if (bmp == null) {
+                        return;
                     }
+
+                    int w = bmp.getWidth();
+                    int h = bmp.getHeight();
+
+                    ByteBuffer rgba = bitmapToRgbaBuffer(bmp);
+                    bmp.recycle();
+
+                    latestFrame.set(new Frame(rgba, w, h));
+
                 } finally {
-                    //decoding finished
                     decodeInProgress.set(false);
                 }
             });
         });
+
         mainHandler.post(renderRunnable);
     }
 
@@ -91,25 +104,32 @@ public class StreamUvcVideoRunner extends Thread implements StreamVideoRunner {
                 return;
             }
 
-            Bitmap bitmap = latestBitmap.getAndSet(null);
-            if (bitmap != null) {
-                videoView.setVisibility(View.VISIBLE);
-                videoView.updateFrame(bitmap);
-                Rect dstRect = videoView.getLocationOnScreenRect();
-                framingHelperOverlayView.setFramingRect(dstRect);
+            Frame f = latestFrame.getAndSet(null);
+            if (f != null) {
+                openGLVideoView.setVisibility(View.VISIBLE);
 
-                if (zebraOverlayView.getVisibility() == View.VISIBLE) {
-                    zebraOverlayView.updateFrame(bitmap, dstRect);
-                }
-
-                if (focusPeakingOverlayView.getVisibility() == View.VISIBLE) {
-                    focusPeakingOverlayView.updateFrame(bitmap, dstRect);
-                }
+                // Push to GL thread via OpenGLVideoView queueEvent()
+                openGLVideoView.updateFrame(f.rgba, f.width, f.height, FourCCType.RGBA);
+                framingHelperOverlayView.setFramingRect(openGLVideoView.getVideoRect());
             }
 
-            videoView.postOnAnimation(this);
+            openGLVideoView.postOnAnimation(this);
         }
     };
+
+    private static ByteBuffer bitmapToRgbaBuffer(Bitmap bmp) {
+        Bitmap argb = bmp.getConfig() == Bitmap.Config.ARGB_8888 ? bmp : bmp.copy(Bitmap.Config.ARGB_8888, false);
+
+        ByteBuffer buf = ByteBuffer.allocateDirect(argb.getByteCount());
+        buf.rewind();
+        argb.copyPixelsToBuffer(buf);
+        buf.rewind();
+
+        if (argb != bmp) {
+            argb.recycle();
+        }
+        return buf;
+    }
 
     @Override
     public void shutdown() {
@@ -117,6 +137,8 @@ public class StreamUvcVideoRunner extends Thread implements StreamVideoRunner {
         captureManager.stop();
 
         mainHandler.removeCallbacks(renderRunnable);
+        decodeExecutor.shutdownNow();
+
         activity.finish();
     }
 }

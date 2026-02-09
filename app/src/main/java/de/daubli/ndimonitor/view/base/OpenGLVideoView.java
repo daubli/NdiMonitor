@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.view.video.opengl;
+package de.daubli.ndimonitor.view.base;
 
 import java.nio.ByteBuffer;
 
@@ -10,8 +10,8 @@ import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import de.daubli.ndimonitor.ndi.FourCCType;
-import de.daubli.ndimonitor.view.focusassist.FocusAssistOverlay;
-import de.daubli.ndimonitor.view.zebra.ZebraOverlay;
+import de.daubli.ndimonitor.view.overlays.focusassist.FocusAssistOverlay;
+import de.daubli.ndimonitor.view.overlays.zebra.ZebraOverlay;
 
 public class OpenGLVideoView extends GLSurfaceView {
 

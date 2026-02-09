@@ -13,10 +13,8 @@ import de.daubli.ndimonitor.StreamVideoRunner;
 import de.daubli.ndimonitor.audio.AudioRingBuffer;
 import de.daubli.ndimonitor.audio.AudioUtils;
 import de.daubli.ndimonitor.databinding.StreamVideoActivityBinding;
-import de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView;
-import de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView;
-import de.daubli.ndimonitor.view.video.opengl.OpenGLVideoView;
-import de.daubli.ndimonitor.view.zebra.ZebraOverlayView;
+import de.daubli.ndimonitor.view.base.OpenGLVideoView;
+import de.daubli.ndimonitor.view.overlays.framehelper.FramingHelperOverlayView;
 
 public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
 
@@ -33,10 +31,6 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
     private final OpenGLVideoView videoView;
 
     private final FramingHelperOverlayView framingHelperOverlayView;
-
-    private final FocusPeakingOverlayView focusPeakingOverlayView;
-
-    private final ZebraOverlayView zebraOverlayView;
 
     private NdiReceiver receiver;
 
@@ -65,8 +59,6 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
         this.activity = activity;
         this.videoView = binding.openGLVideoView;
         this.framingHelperOverlayView = binding.framingHelperOverlayView;
-        this.focusPeakingOverlayView = binding.focusPeakingOverlayView;
-        this.zebraOverlayView = binding.zebraOverlayView;
     }
 
     @Override
@@ -215,7 +207,6 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
 
                 videoView.updateFrame(frame.getData(), frame.getXResolution(), frame.getYResolution(),
                         frame.getFourCCType());
-
                 framingHelperOverlayView.setFramingRect(videoView.getVideoRect());
             }
 

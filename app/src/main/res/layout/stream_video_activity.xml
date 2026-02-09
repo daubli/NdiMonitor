@@ -5,32 +5,13 @@
 			 android:layout_height="match_parent"
 			 tools:context=".StreamVideoActivity">
 
-	<de.daubli.ndimonitor.view.video.bitmap.BitmapVideoView
-			android:id="@+id/bitmapVideoView"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:visibility="invisible"
-	/>
-
-	<de.daubli.ndimonitor.view.video.opengl.OpenGLVideoView
+	<de.daubli.ndimonitor.view.base.OpenGLVideoView
 			android:id="@+id/openGLVideoView"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"
 			android:visibility="invisible"/>
 
-	<de.daubli.ndimonitor.view.zebra.ZebraOverlayView
-			android:id="@+id/zebraOverlayView"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:visibility="invisible"/>
-
-	<de.daubli.ndimonitor.view.focusassist.FocusPeakingOverlayView
-			android:id="@+id/focusPeakingOverlayView"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:visibility="invisible"/>
-
-	<de.daubli.ndimonitor.view.framehelper.FramingHelperOverlayView
+	<de.daubli.ndimonitor.view.overlays.framehelper.FramingHelperOverlayView
 			android:id="@+id/framingHelperOverlayView"
 			android:layout_width="match_parent"
 			android:layout_height="match_parent"

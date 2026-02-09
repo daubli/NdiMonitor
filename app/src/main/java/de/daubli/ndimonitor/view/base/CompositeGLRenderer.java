@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.view.video.opengl;
+package de.daubli.ndimonitor.view.base;
 
 import java.util.ArrayList;
 import java.util.List;

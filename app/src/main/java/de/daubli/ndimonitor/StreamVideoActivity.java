@@ -77,13 +77,6 @@ public class StreamVideoActivity extends AppCompatActivity {
             }
             return true; // you are consuming the touch
         });
-
-        viewBinding.bitmapVideoView.setOnClickListener(view -> {
-            viewBinding.menuLayout.setVisibility(View.VISIBLE);
-            viewBinding.menuLayout.bringToFront();
-            menuHandler.removeCallbacks(hideMenuCallback);
-            menuHandler.postDelayed(hideMenuCallback, 5000);
-        });
     }
 
     private void initializeZebraButton() {

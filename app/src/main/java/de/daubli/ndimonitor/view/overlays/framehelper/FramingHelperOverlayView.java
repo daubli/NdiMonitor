@@ -1,4 +1,4 @@
-package de.daubli.ndimonitor.view.framehelper; // Replace with your actual package name
+package de.daubli.ndimonitor.view.overlays.framehelper; // Replace with your actual package name
 
 import android.content.Context;
 import android.graphics.Canvas;
@@ -10,7 +10,9 @@ import android.view.View;
 public class FramingHelperOverlayView extends View {
 
     private Paint linePaint;
+
     private boolean isVisible = false;
+
     private Rect visibleRect = null;
 
     public FramingHelperOverlayView(Context context) {
@@ -54,7 +56,10 @@ public class FramingHelperOverlayView extends View {
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (!isVisible) return;
+
+        if (!isVisible) {
+            return;
+        }
 
         float left, top, right, bottom;
 

@@ -3,8 +3,7 @@
 package de.daubli.ndimonitor.ndi;
 
 public enum FourCCType {
-    UYVY('U', 'Y', 'V', 'Y'),
-    BGRA('B', 'G', 'R', 'A');
+    UYVY('U', 'Y', 'V', 'Y'), BGRA('B', 'G', 'R', 'A'), RGBA('R', 'G', 'B', 'A');
 
     public int id;
 
