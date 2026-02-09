@@ -10,10 +10,13 @@ import android.util.AttributeSet;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import de.daubli.ndimonitor.ndi.FourCCType;
+import de.daubli.ndimonitor.view.focusassist.FocusAssistOverlay;
 
 public class OpenGLVideoView extends GLSurfaceView {
 
-    private GLVideoRenderer renderer;
+    private GLVideoRenderer videoRenderer;
+
+    private FocusAssistOverlay focusAssistOverlay;
 
     public OpenGLVideoView(@NonNull Context context) {
         super(context);
@@ -27,8 +30,15 @@ public class OpenGLVideoView extends GLSurfaceView {
 
     private void init() {
         setEGLContextClientVersion(2);
-        renderer = new GLVideoRenderer();
-        setRenderer(renderer);
+
+        videoRenderer = new GLVideoRenderer();
+        CompositeGLRenderer compositeRenderer = new CompositeGLRenderer(videoRenderer);
+        focusAssistOverlay = new FocusAssistOverlay();
+
+        // Example: add your focus assist overlay
+        compositeRenderer.addOverlay(focusAssistOverlay);
+
+        setRenderer(compositeRenderer);
         setRenderMode(RENDERMODE_WHEN_DIRTY);
         setZOrderOnTop(false);
         getHolder().setFormat(PixelFormat.TRANSLUCENT);
@@ -36,23 +46,30 @@ public class OpenGLVideoView extends GLSurfaceView {
 
     public void updateFrame(final ByteBuffer buffer, final int frameWidth, final int frameHeight,
             final FourCCType fourCCType) {
-        if (renderer == null || buffer == null) {
+        if (videoRenderer == null || buffer == null) {
             return;
         }
 
-        queueEvent(() -> {
-            renderer.render(buffer, frameWidth, frameHeight, fourCCType);
-        });
+        queueEvent(() -> videoRenderer.render(buffer, frameWidth, frameHeight, fourCCType));
         requestRender();
     }
 
     public Rect getVideoRect() {
-        return renderer.getVideoRect();
+        return videoRenderer.getVideoRect();
     }
 
     @Override
     public boolean performClick() {
         super.performClick();
         return true;
+    }
+
+    public void setFocusAssistEnabled(boolean enabled) {
+        if (focusAssistOverlay == null) {
+            return;
+        }
+
+        queueEvent(() -> focusAssistOverlay.setEnabled(enabled));
+        requestRender();
     }
 }

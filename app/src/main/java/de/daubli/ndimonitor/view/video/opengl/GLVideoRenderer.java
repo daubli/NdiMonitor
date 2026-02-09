@@ -26,9 +26,9 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer {
 
     private FourCCType frameType;
 
-    private int surfaceWidth;
+    protected int surfaceWidth;
 
-    private int surfaceHeight;
+    protected int surfaceHeight;
 
     private boolean frameAvailable = false;
 
@@ -38,7 +38,7 @@ public class GLVideoRenderer implements GLSurfaceView.Renderer {
     private int programUyvy;
 
     // Texture
-    private int textureId;
+    protected int textureId;
 
     // Attribute locations
     private int posLocBgra;

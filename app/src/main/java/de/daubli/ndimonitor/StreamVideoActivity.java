@@ -55,7 +55,7 @@ public class StreamVideoActivity extends AppCompatActivity {
             viewBinding.framingHelperOverlayView.toggleFramingHelper();
         }
         if (settingsStore.isFocusAssistEnabled()) {
-            viewBinding.focusPeakingOverlayView.setVisibility(View.VISIBLE);
+            viewBinding.openGLVideoView.setFocusAssistEnabled(true);
             viewBinding.focusAssistButton.setImageResource(R.drawable.focus_assist_selected);
         }
         if (settingsStore.isZebraEnabled()) {
@@ -104,12 +104,12 @@ public class StreamVideoActivity extends AppCompatActivity {
     private void initializeToggleFocusAssistButton() {
         viewBinding.focusAssistButton.setOnClickListener(view -> {
             SettingsStore settingsStore = new SettingsStore();
-            if (viewBinding.focusPeakingOverlayView.getVisibility() == View.VISIBLE) {
-                viewBinding.focusPeakingOverlayView.setVisibility(View.GONE);
+            if (settingsStore.isFocusAssistEnabled()) {
+                viewBinding.openGLVideoView.setFocusAssistEnabled(false);
                 viewBinding.focusAssistButton.setImageResource(R.drawable.focus_assist);
                 settingsStore.setFocusAssistEnabled(false);
             } else {
-                viewBinding.focusPeakingOverlayView.setVisibility(View.VISIBLE);
+                viewBinding.openGLVideoView.setFocusAssistEnabled(true);
                 viewBinding.focusAssistButton.setImageResource(R.drawable.focus_assist_selected);
                 settingsStore.setFocusAssistEnabled(true);
             }
