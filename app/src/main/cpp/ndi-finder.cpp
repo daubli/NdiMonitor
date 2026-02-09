@@ -1,72 +1,110 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
+// NdiFinder.cpp
 #include "ndi-wrapper.h"
+#include <cstring>
 
 extern "C" {
-    JNIEXPORT jlong JNICALL
-    Java_de_daubli_ndimonitor_ndi_NdiFinder_findCreate(JNIEnv *env, jclass clazz,
-                                                  jboolean jShowLocalSources,
-                                                  jstring jGroups,
-                                                  jstring jExtraIps) {
-        auto *NDI_find_create = new NDIlib_find_create_t();
-        NDI_find_create->show_local_sources = jShowLocalSources;
 
-        auto *isCopy = new jboolean();
-        *isCopy = JNI_TRUE;
-        if(jGroups != nullptr) {
-            const char *groups = env->GetStringUTFChars(jGroups, isCopy);
-            NDI_find_create->p_groups = groups;
-        }
-        if(jExtraIps != nullptr) {
-            const char *extraIps = env->GetStringUTFChars(jExtraIps, isCopy);
-            NDI_find_create->p_extra_ips = extraIps;
-        }
-        delete isCopy;
+JNIEXPORT jlong JNICALL
+Java_de_daubli_ndimonitor_ndi_NdiFinder_findCreate(
+    JNIEnv* env, jclass /*clazz*/,
+    jboolean jShowLocalSources,
+    jstring jGroups,
+    jstring jExtraIps)
+{
+    // Use stack struct; no heap allocation needed
+    NDIlib_find_create_t create{};
+    std::memset(&create, 0, sizeof(create));
 
-        auto ret = NDIlib_find_create_v2(NDI_find_create);
-        delete NDI_find_create;
+    create.show_local_sources = (jShowLocalSources == JNI_TRUE);
 
-        return (jlong) ret;
-    }
+    // Pull JNI strings for the duration of the call
+    const char* groups   = nullptr;
+    const char* extraIps = nullptr;
 
-    JNIEXPORT jlongArray JNICALL
-    Java_de_daubli_ndimonitor_ndi_NdiFinder_findGetCurrentSources(JNIEnv *env, jclass clazz, jlong finderPtr) {
-        uint32_t no_sources = 0;
-        auto instance = reinterpret_cast<NDIlib_find_instance_t>(finderPtr);
+    if (jGroups != nullptr)   groups   = env->GetStringUTFChars(jGroups, nullptr);
+    if (jExtraIps != nullptr) extraIps = env->GetStringUTFChars(jExtraIps, nullptr);
 
-        if (instance == nullptr) {
-            env->ThrowNew(
-                env->FindClass("java/lang/RuntimeException"),
-                "NDI finder instance pointer is null in native code!"
-            );
-            return nullptr; // This return value is ignored when an exception is pending
-        }
+    create.p_groups     = groups;
+    create.p_extra_ips  = extraIps;
 
-        const NDIlib_source_t* p_sources = NDIlib_find_get_current_sources(instance, &no_sources);
+    // Create finder
+    NDIlib_find_instance_t finder = NDIlib_find_create_v2(&create);
 
-        if (p_sources == nullptr || no_sources == 0) {
-            // Log info for debugging
-            // __android_log_print(ANDROID_LOG_INFO, "NDI", "No NDI sources found or p_sources is null");
-            return env->NewLongArray(0);
-        }
+    // Release JNI strings (important!)
+    if (jGroups != nullptr)   env->ReleaseStringUTFChars(jGroups, groups);
+    if (jExtraIps != nullptr) env->ReleaseStringUTFChars(jExtraIps, extraIps);
 
-        auto ret = env->NewLongArray(no_sources);
-        for(uint32_t i = 0; i < no_sources; i++) {
-            const NDIlib_source_t *source = &p_sources[i];
-            const auto pSource = (const jlong) source;
-            env->SetLongArrayRegion(ret, i, 1, &pSource);
-        }
-        return ret;
-    }
-
-    JNIEXPORT void JNICALL
-    Java_de_daubli_ndimonitor_ndi_NdiFinder_findDestroy(JNIEnv *env, jclass jClazz, jlong pFind) {
-        NDIlib_find_destroy(reinterpret_cast<NDIlib_find_instance_t>(pFind));
-    }
-
-    JNIEXPORT jboolean JNICALL
-    Java_de_daubli_ndimonitor_ndi_NdiFinder_findWaitForSources(JNIEnv *env, jclass jClazz, jlong pFind, jint jTimeout) {
-        return NDIlib_find_wait_for_sources(reinterpret_cast<NDIlib_find_instance_t>(pFind), jTimeout);
-    }
-
+    return reinterpret_cast<jlong>(finder);
 }
+
+/**
+ * Returns packed String[]:
+ * [name0, url0, name1, url1, ...]
+ */
+JNIEXPORT jobjectArray JNICALL
+Java_de_daubli_ndimonitor_ndi_NdiFinder_findGetCurrentSources(
+    JNIEnv* env, jclass /*clazz*/, jlong finderPtr)
+{
+    auto instance = reinterpret_cast<NDIlib_find_instance_t>(finderPtr);
+    if (!instance) {
+        env->ThrowNew(env->FindClass("java/lang/RuntimeException"),
+                      "NDI finder instance pointer is null in native code!");
+        return nullptr;
+    }
+
+    uint32_t no_sources = 0;
+    const NDIlib_source_t* p_sources = NDIlib_find_get_current_sources(instance, &no_sources);
+
+    jclass stringClass = env->FindClass("java/lang/String");
+    if (!stringClass) {
+        env->ThrowNew(env->FindClass("java/lang/RuntimeException"),
+                      "Failed to find java/lang/String class");
+        return nullptr;
+    }
+
+    if (!p_sources || no_sources == 0) {
+        return env->NewObjectArray(0, stringClass, nullptr);
+    }
+
+    // packed array: 2 entries per source (name + url)
+    jsize outLen = static_cast<jsize>(no_sources * 2u);
+    jobjectArray out = env->NewObjectArray(outLen, stringClass, nullptr);
+    if (!out) return nullptr;
+
+    for (uint32_t i = 0; i < no_sources; i++) {
+        const char* name = p_sources[i].p_ndi_name ? p_sources[i].p_ndi_name : "";
+        const char* url  = p_sources[i].p_url_address ? p_sources[i].p_url_address : "";
+
+        jstring jName = env->NewStringUTF(name);
+        jstring jUrl  = env->NewStringUTF(url);
+
+        env->SetObjectArrayElement(out, static_cast<jsize>(2u * i),     jName);
+        env->SetObjectArrayElement(out, static_cast<jsize>(2u * i + 1), jUrl);
+
+        // Local refs cleanup (good practice in loops)
+        env->DeleteLocalRef(jName);
+        env->DeleteLocalRef(jUrl);
+    }
+
+    return out;
+}
+
+JNIEXPORT void JNICALL
+Java_de_daubli_ndimonitor_ndi_NdiFinder_findDestroy(
+    JNIEnv* /*env*/, jclass /*clazz*/, jlong pFind)
+{
+    auto instance = reinterpret_cast<NDIlib_find_instance_t>(pFind);
+    if (!instance) return;
+    NDIlib_find_destroy(instance);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_de_daubli_ndimonitor_ndi_NdiFinder_findWaitForSources(
+    JNIEnv* /*env*/, jclass /*clazz*/, jlong pFind, jint jTimeout)
+{
+    auto instance = reinterpret_cast<NDIlib_find_instance_t>(pFind);
+    if (!instance) return JNI_FALSE;
+    return NDIlib_find_wait_for_sources(instance, jTimeout) ? JNI_TRUE : JNI_FALSE;
+}
+
+} // extern "C"

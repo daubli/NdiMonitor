@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class NdiVideoFrame implements AutoCloseable {
 
     final long instancePointer;
+
     AtomicReference<NdiFrameCleaner> allocatedBufferSource = new AtomicReference<>();
 
     public NdiVideoFrame() {
@@ -26,8 +27,17 @@ public class NdiVideoFrame implements AutoCloseable {
         return getData(instancePointer);
     }
 
-    public FourCCType getFourCCType() {
-        return FourCCType.valueOf(getFourCCType(instancePointer));
+    public FourCCType getFourCCType() throws UnsupportedOperationException {
+        try {
+            return FourCCType.valueOf(getFourCCTypeId());
+        } catch (IllegalArgumentException e) {
+            throw new UnsupportedOperationException(
+                    "Unsupported FourCC type with id: " + getFourCCType(instancePointer));
+        }
+    }
+
+    public int getFourCCTypeId() {
+        return getFourCCType(instancePointer);
     }
 
     public int getFrameRateN() {

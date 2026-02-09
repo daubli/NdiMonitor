@@ -1,8 +1,7 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
 package de.daubli.ndimonitor.ndi;
 
 public class NdiReceiver {
+
     final long instancePointer;
 
     public NdiReceiver() {
@@ -10,7 +9,11 @@ public class NdiReceiver {
     }
 
     public void connect(NdiSource ndiSource) {
-        receiveConnect(instancePointer, ndiSource == null ? 0L : ndiSource.instancePointer);
+        if (ndiSource == null) {
+            receiveConnect(instancePointer, null, null);
+        } else {
+            receiveConnect(instancePointer, ndiSource.getSourceName(), ndiSource.getUrlAddress());
+        }
     }
 
     public void close() {
@@ -19,9 +22,7 @@ public class NdiReceiver {
 
     private static native long receiveCreateDefaultSettings();
 
-    private static native void receiveConnect(long instancePointer, long pSource);
+    private static native void receiveConnect(long receiverPtr, String name, String urlAddress);
 
     private static native void receiveDestroy(long instancePointer);
-
-
 }
