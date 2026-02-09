@@ -5,7 +5,6 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import android.opengl.GLES20;
-import android.os.SystemClock;
 import de.daubli.ndimonitor.view.overlays.Overlay;
 
 public class ZebraOverlay extends Overlay {
@@ -40,8 +39,6 @@ public class ZebraOverlay extends Overlay {
 
     private int uStripePx = -1;
 
-    private int uPhase = -1;
-
     private int uAlphaWhite = -1;
 
     private int uAlphaBlack = -1;
@@ -61,8 +58,6 @@ public class ZebraOverlay extends Overlay {
     private float alphaWhite = 0.35f;
 
     private float alphaBlack = 0.65f;
-
-    private float phaseSpeed = 2.0f;         // pixels-ish per second (0 = static)
 
     public ZebraOverlay() {
         vertexBuffer = ByteBuffer.allocateDirect(8 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -117,7 +112,6 @@ public class ZebraOverlay extends Overlay {
                         "uniform sampler2D uTexture;" +
                         "uniform float uThreshold;" +
                         "uniform float uStripePx;" +
-                        "uniform float uPhase;" +
                         "uniform float uAlphaWhite;" +
                         "uniform float uAlphaBlack;" +
                         "varying vec2 vTexCoord;" +
@@ -130,7 +124,7 @@ public class ZebraOverlay extends Overlay {
                         "    return;" +
                         "  }" +
                         "  float w = max(uStripePx, 1.0);" +
-                        "  float t = (gl_FragCoord.x + gl_FragCoord.y + uPhase) / w;" +
+                        "  float t = (gl_FragCoord.x + gl_FragCoord.y) / w;" +
                         "  float stripe = mod(floor(t), 2.0);" + // 0 or 1
                         "  float a = mix(uAlphaBlack, uAlphaWhite, stripe);" +
                         "  gl_FragColor = vec4(vec3(stripe), a);" +
@@ -145,12 +139,11 @@ public class ZebraOverlay extends Overlay {
         uTexture = GLES20.glGetUniformLocation(program, "uTexture");
         uThreshold = GLES20.glGetUniformLocation(program, "uThreshold");
         uStripePx = GLES20.glGetUniformLocation(program, "uStripePx");
-        uPhase = GLES20.glGetUniformLocation(program, "uPhase");
         uAlphaWhite = GLES20.glGetUniformLocation(program, "uAlphaWhite");
         uAlphaBlack = GLES20.glGetUniformLocation(program, "uAlphaBlack");
 
-        if (aPosition < 0 || aTexCoord < 0 || uTexture < 0 || uThreshold < 0 || uStripePx < 0 || uPhase < 0
-                || uAlphaWhite < 0 || uAlphaBlack < 0) {
+        if (aPosition < 0 || aTexCoord < 0 || uTexture < 0 || uThreshold < 0 || uStripePx < 0 || uAlphaWhite < 0
+                || uAlphaBlack < 0) {
             throw new RuntimeException("Failed to get shader locations (attrib/uniform missing/optimized out).");
         }
 
@@ -164,13 +157,10 @@ public class ZebraOverlay extends Overlay {
         initGL();
         GLES20.glUseProgram(program);
 
-        float phase = (phaseSpeed == 0.0f) ? 0.0f : (SystemClock.uptimeMillis() * 0.001f) * phaseSpeed;
-
         GLES20.glUniform1f(uThreshold, thresholdYPrime);
         GLES20.glUniform1f(uStripePx, stripePx);
         GLES20.glUniform1f(uAlphaWhite, alphaWhite);
         GLES20.glUniform1f(uAlphaBlack, alphaBlack);
-        GLES20.glUniform1f(uPhase, phase);
 
         // Compute NDC quad for the video rect
         float left = 2f * videoRectLeft / surfaceWidth - 1f;
