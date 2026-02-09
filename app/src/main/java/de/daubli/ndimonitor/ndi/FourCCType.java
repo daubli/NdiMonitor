@@ -11,13 +11,23 @@ public enum FourCCType {
         id = (c1 & 0xFF) | ((c2 & 0xFF) << 8) | ((c3 & 0xFF) << 16) | ((c4 & 0xFF) << 24);
     }
 
-    public static FourCCType valueOf(int id) {
+    public static FourCCType valueOf(int id) throws IllegalArgumentException {
         if (id == UYVY.id) {
             return UYVY;
         } else if (id == BGRA.id) {
             return BGRA;
+        } else if (id == RGBA.id) {
+            return RGBA;
         } else {
-            return null;
+            throw new IllegalArgumentException("Unknown FourCC type id: " + id);
         }
+    }
+
+    public static String fourCCToString(int fourCC) {
+        char a = (char) (fourCC & 0xFF);
+        char b = (char) ((fourCC >> 8) & 0xFF);
+        char c = (char) ((fourCC >> 16) & 0xFF);
+        char d = (char) ((fourCC >> 24) & 0xFF);
+        return "" + a + b + c + d;
     }
 }

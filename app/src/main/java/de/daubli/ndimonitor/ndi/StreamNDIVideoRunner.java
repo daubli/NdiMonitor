@@ -1,13 +1,16 @@
 package de.daubli.ndimonitor.ndi;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import android.media.*;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.Choreographer;
 import android.view.View;
+import android.widget.Toast;
 import de.daubli.ndimonitor.StreamVideoActivity;
 import de.daubli.ndimonitor.StreamVideoRunner;
 import de.daubli.ndimonitor.audio.AudioRingBuffer;
@@ -17,6 +20,8 @@ import de.daubli.ndimonitor.view.base.OpenGLVideoView;
 import de.daubli.ndimonitor.view.overlays.framehelper.FramingHelperOverlayView;
 
 public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
+
+    private static final String TAG = "StreamNDI";
 
     private static final int SAMPLE_RATE = 48_000;
 
@@ -48,11 +53,18 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
 
     private Thread audioThread;
 
+    private Thread audioCaptureThread;
+
+    private Thread videoCaptureThread;
+
     private final AtomicReference<NdiVideoFrame> renderFrame = new AtomicReference<>();
 
     private NdiVideoFrame captureFrame;
 
     private final AudioRingBuffer ringBuffer = new AudioRingBuffer(20, 4000 * 2 * CHANNEL_COUNT);
+
+    // Ensure we fail only once and don't spam UI/logs
+    private final AtomicBoolean renderFailed = new AtomicBoolean(false);
 
     public StreamNDIVideoRunner(NdiSource ndiSource, StreamVideoActivityBinding binding, StreamVideoActivity activity) {
         this.ndiSource = ndiSource;
@@ -63,48 +75,54 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
 
     @Override
     public void run() {
-        receiver = new NdiReceiver();
-        receiver.connect(ndiSource);
+        try {
+            receiver = new NdiReceiver();
+            receiver.connect(ndiSource);
 
-        frameSync = new NdiFrameSync(receiver);
+            frameSync = new NdiFrameSync(receiver);
 
-        captureFrame = new NdiVideoFrame();
-        renderFrame.set(new NdiVideoFrame());
+            captureFrame = new NdiVideoFrame();
+            renderFrame.set(new NdiVideoFrame());
 
-        initAudio();
-        startAudioCaptureThread();
-        startAudioThread();
-        startVideoCaptureThread();
+            initAudio();
+            startAudioCaptureThread();
+            startAudioThread();
+            startVideoCaptureThread();
 
-        mainHandler.post(() -> {
-            choreographer = Choreographer.getInstance();
-            choreographer.postFrameCallback(frameCallback);
-        });
+            mainHandler.post(() -> {
+                choreographer = Choreographer.getInstance();
+                choreographer.postFrameCallback(frameCallback);
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "Fatal error starting stream", t);
+            failWithMessage("Failed to start stream.");
+        }
     }
 
     @Override
     public void shutdown() {
+        // idempotent stop
         running = false;
 
+        // Interrupt threads so they can exit quickly (especially if sleeping)
+        interruptThread(audioThread);
+        interruptThread(audioCaptureThread);
+        interruptThread(videoCaptureThread);
+
+        // Stop UI rendering first
         mainHandler.post(() -> {
             if (choreographer != null) {
                 choreographer.removeFrameCallback(frameCallback);
             }
         });
 
-        if (audioTrack != null) {
-            audioTrack.stop();
-            audioTrack.release();
-        }
-
-        if (frameSync != null) {
-            frameSync.close();
-        }
-        if (receiver != null) {
-            receiver.close();
-        }
-
-        activity.finish();
+        // Release resources (AudioTrack should be handled on main thread to avoid UI races in some implementations)
+        mainHandler.post(() -> {
+            safeReleaseAudioTrack();
+            safeCloseFrameSync();
+            safeCloseReceiver();
+            activity.finish();
+        });
     }
 
     private void initAudio() {
@@ -123,17 +141,27 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
     private void startAudioThread() {
         audioThread = new Thread(() -> {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_URGENT_AUDIO);
-            while (running) {
-                byte[] frameData = ringBuffer.read();
-                if (frameData != null) {
-                    audioTrack.write(frameData, 0, frameData.length);
-                } else {
-                    try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
-                        break;
+            try {
+                while (running && !Thread.currentThread().isInterrupted()) {
+                    byte[] frameData = ringBuffer.read();
+                    if (frameData != null) {
+                        try {
+                            if (audioTrack != null) {
+                                audioTrack.write(frameData, 0, frameData.length);
+                            }
+                        } catch (Throwable t) {
+                            Log.e(TAG, "AudioTrack write failed", t);
+                            // Audio failure shouldn't be "unsupported format", just stop cleanly
+                            failWithMessage("Audio playback failed.");
+                            return;
+                        }
+                    } else {
+                        // avoid tight spin
+                        Thread.sleep(2);
                     }
                 }
+            } catch (InterruptedException ignored) {
+                // exit
             }
         }, "NDI-AudioTrack");
 
@@ -141,52 +169,81 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
     }
 
     private void startAudioCaptureThread() {
-        new Thread(() -> {
+        audioCaptureThread = new Thread(() -> {
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_AUDIO);
             NdiAudioFrame audioFrame = new NdiAudioFrame();
 
-            while (running) {
-                frameSync.captureAudio(audioFrame, SAMPLE_RATE, CHANNEL_COUNT, 4000);
+            try {
+                while (running && !Thread.currentThread().isInterrupted()) {
+                    try {
+                        if (frameSync == null) {
+                            Thread.sleep(2);
+                            continue;
+                        }
 
-                ByteBuffer pcm = AudioUtils.convertPlanarFloatToInterleavedPCM16(audioFrame.getData(),
-                        audioFrame.getChannels());
+                        frameSync.captureAudio(audioFrame, SAMPLE_RATE, CHANNEL_COUNT, 4000);
 
-                if (pcm.remaining() > 0) {
-                    firstAudioFrameReceived = true;
-                    byte[] data = new byte[pcm.remaining()];
-                    pcm.get(data);
+                        ByteBuffer pcm = AudioUtils.convertPlanarFloatToInterleavedPCM16(audioFrame.getData(),
+                                audioFrame.getChannels());
 
-                    if (AudioUtils.isSilentFast(data)) {
-                        continue;
+                        if (pcm != null && pcm.remaining() > 0) {
+                            firstAudioFrameReceived = true;
+
+                            byte[] data = new byte[pcm.remaining()];
+                            pcm.get(data);
+
+                            if (!AudioUtils.isSilentFast(data)) {
+                                ringBuffer.write(data);
+                            }
+                        }
+
+                        Thread.sleep(2);
+                    } catch (InterruptedException ie) {
+                        break;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Audio capture failed", t);
+                        failWithMessage("Audio capture failed.");
+                        return;
                     }
-                    ringBuffer.write(data);
                 }
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    break;
-                }
+            } finally {
+                // nothing special
             }
-        }, "NDI-Audio-Capture").start();
+        }, "NDI-Audio-Capture");
+
+        audioCaptureThread.start();
     }
 
     private void startVideoCaptureThread() {
-        new Thread(() -> {
-
-            while (running) {
-
-                if (frameSync.captureVideo(captureFrame)) {
-                    NdiVideoFrame old = renderFrame.getAndSet(captureFrame);
-                    captureFrame = old;
-                } else {
+        videoCaptureThread = new Thread(() -> {
+            try {
+                while (running && !Thread.currentThread().isInterrupted()) {
                     try {
-                        Thread.sleep(1);
-                    } catch (InterruptedException e) {
+                        if (frameSync == null) {
+                            Thread.sleep(2);
+                            continue;
+                        }
+
+                        if (frameSync.captureVideo(captureFrame)) {
+                            NdiVideoFrame old = renderFrame.getAndSet(captureFrame);
+                            captureFrame = old;
+                        } else {
+                            Thread.sleep(2);
+                        }
+                    } catch (InterruptedException ie) {
                         break;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Video capture failed", t);
+                        failWithMessage("Video capture failed.");
+                        return;
                     }
                 }
+            } finally {
+                // nothing special
             }
-        }, "NDI-Video-Capture").start();
+        }, "NDI-Video-Capture");
+
+        videoCaptureThread.start();
     }
 
     private final Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {
@@ -199,18 +256,136 @@ public class StreamNDIVideoRunner extends Thread implements StreamVideoRunner {
 
             NdiVideoFrame frame = renderFrame.get();
             if (frame != null) {
-
                 if (firstFramePending && firstAudioFrameReceived) {
                     videoView.setVisibility(View.VISIBLE);
                     firstFramePending = false;
                 }
 
-                videoView.updateFrame(frame.getData(), frame.getXResolution(), frame.getYResolution(),
-                        frame.getFourCCType());
-                framingHelperOverlayView.setFramingRect(videoView.getVideoRect());
+                try {
+                    if (!isFrameRenderable(frame)) {
+                        // skip bad frames quietly
+                        reschedule();
+                        return;
+                    }
+
+                    videoView.updateFrame(frame.getData(), frame.getXResolution(), frame.getYResolution(),
+                            frame.getFourCCType());
+                    framingHelperOverlayView.setFramingRect(videoView.getVideoRect());
+
+                } catch (UnsupportedOperationException e) {
+                    failUnsupportedFormat(frame.getFourCCTypeId(), e);
+                    return;
+                } catch (Throwable t) {
+                    Log.e(TAG, "Rendering failed", t);
+                    failWithMessage("Rendering failed.");
+                    return;
+                }
             }
 
-            choreographer.postFrameCallback(this);
+            reschedule();
+        }
+
+        private void reschedule() {
+            if (choreographer != null && running) {
+                choreographer.postFrameCallback(this);
+            }
         }
     };
+
+    private boolean isFrameRenderable(NdiVideoFrame frame) {
+        int w = frame.getXResolution();
+        int h = frame.getYResolution();
+        if (w <= 0 || h <= 0) {
+            return false;
+        }
+
+        ByteBuffer data = frame.getData();
+        if (data == null) {
+            return false;
+        }
+        return data.remaining() > 0;
+    }
+
+    private void failUnsupportedFormat(int fourCC, UnsupportedOperationException e) {
+        if (!renderFailed.compareAndSet(false, true)) {
+            return;
+        }
+
+        Log.e(TAG, "Unsupported video format: " + FourCCType.fourCCToString(fourCC), e);
+        running = false;
+
+        mainHandler.post(() -> {
+            if (choreographer != null) {
+                choreographer.removeFrameCallback(frameCallback);
+            }
+            videoView.setVisibility(View.INVISIBLE);
+
+            Toast.makeText(activity,
+                    "Can't display video: unsupported format (" + FourCCType.fourCCToString(fourCC) + ")",
+                    Toast.LENGTH_LONG).show();
+
+            // clean shutdown
+            shutdown();
+        });
+    }
+
+    private void failWithMessage(String message) {
+        if (!renderFailed.compareAndSet(false, true)) {
+            return;
+        }
+
+        running = false;
+        mainHandler.post(() -> {
+            if (choreographer != null) {
+                choreographer.removeFrameCallback(frameCallback);
+            }
+            videoView.setVisibility(View.INVISIBLE);
+
+            Toast.makeText(activity, message, Toast.LENGTH_LONG).show();
+            shutdown();
+        });
+    }
+
+    private void interruptThread(Thread t) {
+        if (t != null) {
+            t.interrupt();
+        }
+    }
+
+    private void safeReleaseAudioTrack() {
+        if (audioTrack == null) {
+            return;
+        }
+        try {
+            audioTrack.stop();
+        } catch (Throwable ignored) {
+        }
+        try {
+            audioTrack.release();
+        } catch (Throwable ignored) {
+        }
+        audioTrack = null;
+    }
+
+    private void safeCloseFrameSync() {
+        if (frameSync == null) {
+            return;
+        }
+        try {
+            frameSync.close();
+        } catch (Throwable ignored) {
+        }
+        frameSync = null;
+    }
+
+    private void safeCloseReceiver() {
+        if (receiver == null) {
+            return;
+        }
+        try {
+            receiver.close();
+        } catch (Throwable ignored) {
+        }
+        receiver = null;
+    }
 }
