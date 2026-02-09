@@ -1,4 +1,3 @@
-// NdiReceiver.cpp
 #include "ndi-wrapper.h"
 #include <cstring>
 

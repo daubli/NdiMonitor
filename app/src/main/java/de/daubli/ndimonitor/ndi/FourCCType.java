@@ -1,5 +1,3 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
 package de.daubli.ndimonitor.ndi;
 
 public enum FourCCType {
