@@ -11,12 +11,15 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import de.daubli.ndimonitor.ndi.FourCCType;
 import de.daubli.ndimonitor.view.focusassist.FocusAssistOverlay;
+import de.daubli.ndimonitor.view.zebra.ZebraOverlay;
 
 public class OpenGLVideoView extends GLSurfaceView {
 
     private GLVideoRenderer videoRenderer;
 
     private FocusAssistOverlay focusAssistOverlay;
+
+    private ZebraOverlay zebraOverlay;
 
     public OpenGLVideoView(@NonNull Context context) {
         super(context);
@@ -33,10 +36,12 @@ public class OpenGLVideoView extends GLSurfaceView {
 
         videoRenderer = new GLVideoRenderer();
         CompositeGLRenderer compositeRenderer = new CompositeGLRenderer(videoRenderer);
-        focusAssistOverlay = new FocusAssistOverlay();
 
-        // Example: add your focus assist overlay
+        focusAssistOverlay = new FocusAssistOverlay();
         compositeRenderer.addOverlay(focusAssistOverlay);
+
+        zebraOverlay = new ZebraOverlay();
+        compositeRenderer.addOverlay(zebraOverlay);
 
         setRenderer(compositeRenderer);
         setRenderMode(RENDERMODE_WHEN_DIRTY);
@@ -70,6 +75,15 @@ public class OpenGLVideoView extends GLSurfaceView {
         }
 
         queueEvent(() -> focusAssistOverlay.setEnabled(enabled));
+        requestRender();
+    }
+
+    public void setZebraOverlayEnabled(boolean enabled) {
+        if (zebraOverlay == null) {
+            return;
+        }
+
+        queueEvent(() -> zebraOverlay.setEnabled(enabled));
         requestRender();
     }
 }

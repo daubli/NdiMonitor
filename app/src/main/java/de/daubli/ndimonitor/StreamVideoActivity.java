@@ -59,7 +59,7 @@ public class StreamVideoActivity extends AppCompatActivity {
             viewBinding.focusAssistButton.setImageResource(R.drawable.focus_assist_selected);
         }
         if (settingsStore.isZebraEnabled()) {
-            viewBinding.zebraOverlayView.setVisibility(View.VISIBLE);
+            viewBinding.openGLVideoView.setZebraOverlayEnabled(true);
             viewBinding.zebraButton.setImageResource(R.drawable.zebra_selected);
         }
     }
@@ -89,12 +89,12 @@ public class StreamVideoActivity extends AppCompatActivity {
     private void initializeZebraButton() {
         viewBinding.zebraButton.setOnClickListener(view -> {
             SettingsStore settingsStore = new SettingsStore();
-            if (viewBinding.zebraOverlayView.getVisibility() == View.VISIBLE) {
-                viewBinding.zebraOverlayView.setVisibility(View.GONE);
+            if (settingsStore.isZebraEnabled()) {
+                viewBinding.openGLVideoView.setZebraOverlayEnabled(false);
                 viewBinding.zebraButton.setImageResource(R.drawable.zebra);
                 settingsStore.setZebraEnabled(false);
             } else {
-                viewBinding.zebraOverlayView.setVisibility(View.VISIBLE);
+                viewBinding.openGLVideoView.setZebraOverlayEnabled(true);
                 viewBinding.zebraButton.setImageResource(R.drawable.zebra_selected);
                 settingsStore.setZebraEnabled(true);
             }
