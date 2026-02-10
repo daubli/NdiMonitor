@@ -20,6 +20,7 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import de.daubli.ndimonitor.ndi.Ndi;
+import de.daubli.ndimonitor.ndi.NdiDiscoveryManager;
 import de.daubli.ndimonitor.ndi.NdiFinder;
 import de.daubli.ndimonitor.ndi.NdiSource;
 import de.daubli.ndimonitor.settings.SettingsStore;
@@ -44,6 +45,14 @@ public class MainActivity extends AppCompatActivity {
 
     private SettingsStore settingsStore;
 
+    private NdiDiscoveryManager ndiDiscoveryManager;
+
+    private static boolean isColdStart = true;
+
+    private static final int COLD_START_TIMEOUT_MS = 10000;
+
+    private static final int NORMAL_TIMEOUT_MS = 5000;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -55,6 +64,7 @@ public class MainActivity extends AppCompatActivity {
         mSwipeRefreshLayout = findViewById(R.id.swipeToRefresh);
         mSwipeRefreshLayout.setColorSchemeResources(R.color.cardview_shadow_end_color);
         mSwipeRefreshLayout.setOnRefreshListener(this::refreshSourcesAndUpdateList);
+        ndiDiscoveryManager = new NdiDiscoveryManager(this.getApplicationContext());
     }
 
     @Override
@@ -82,12 +92,11 @@ public class MainActivity extends AppCompatActivity {
             this.uvcSourceFinder = newUvcFinder;
 
             // Now it's safe to use the finder
-            de.daubli.ndimonitor.sources.VideoSource[] sources = refreshAndReturnSources();
+            VideoSource[] sources = refreshAndReturnSources();
 
             // Store actual VideoSource objects for later reference
-            List<de.daubli.ndimonitor.sources.VideoSource> sourceList = Arrays.asList(sources);
-            List<String> sourceNames = sourceList.stream().map(de.daubli.ndimonitor.sources.VideoSource::getSourceName)
-                    .collect(Collectors.toList());
+            List<VideoSource> sourceList = Arrays.asList(sources);
+            List<String> sourceNames = sourceList.stream().map(VideoSource::getSourceName).collect(Collectors.toList());
 
             runOnUiThread(() -> {
                 ArrayAdapter<String> refreshedSourceArray = new ArrayAdapter<>(this,
@@ -136,6 +145,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        this.ndiDiscoveryManager.stopDiscovery();
         this.finder.close();
     }
 
@@ -143,14 +153,17 @@ public class MainActivity extends AppCompatActivity {
         return selectedSource;
     }
 
-    public de.daubli.ndimonitor.sources.VideoSource[] refreshAndReturnSources() {
-        finder.waitForSources(5000);
+    public VideoSource[] refreshAndReturnSources() {
+        int timeout = isColdStart ? COLD_START_TIMEOUT_MS : NORMAL_TIMEOUT_MS;
+
+        ndiDiscoveryManager.startDiscovery();
+        finder.waitForSources(timeout);
 
         VideoSource[] ndiSources = finder.getCurrentSources();
         UVCSource[] uvcSources = uvcSourceFinder.getUvcSources();
 
         int totalLength = ndiSources.length + uvcSources.length;
-        de.daubli.ndimonitor.sources.VideoSource[] resultVideoSources = new de.daubli.ndimonitor.sources.VideoSource[totalLength];
+        VideoSource[] resultVideoSources = new VideoSource[totalLength];
 
         System.arraycopy(ndiSources, 0, resultVideoSources, 0, ndiSources.length);
         System.arraycopy(uvcSources, 0, resultVideoSources, ndiSources.length, uvcSources.length);

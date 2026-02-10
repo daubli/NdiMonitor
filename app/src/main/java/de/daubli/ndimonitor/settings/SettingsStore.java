@@ -16,9 +16,9 @@ public class SettingsStore {
 
     private static final String FRAMING_HELPER_ENABLED_KEY = "de.daubli.ndimonitor.view.framing-helper.enabled";
 
-    private static final String FOCUS_ASSIST_ENABLED_KEY = "de.daubli.ndimonitor.view.focusassist.enabled";
+    private static final String FOCUS_ASSIST_ENABLED_KEY = "de.daubli.ndimonitor.view.overlays.focusassist.enabled";
 
-    private static final String ZEBRA_ENABLED_KEY = "de.daubli.ndimonitor.view.zebra.enabled";
+    private static final String ZEBRA_ENABLED_KEY = "de.daubli.ndimonitor.view.overlays.zebra.enabled";
 
     public SettingsStore() {
         sharedPreferences = getAppContext().getSharedPreferences("de.daubli.ndimonitor_preferences",
@@ -62,7 +62,6 @@ public class SettingsStore {
         editor.apply();
     }
 
-
     public boolean isFocusAssistEnabled() {
         if (sharedPreferences.contains(FOCUS_ASSIST_ENABLED_KEY)) {
             return sharedPreferences.getBoolean(FOCUS_ASSIST_ENABLED_KEY, false);
@@ -88,6 +87,5 @@ public class SettingsStore {
         editor.putBoolean(ZEBRA_ENABLED_KEY, enabled);
         editor.apply();
     }
-
 
 }

@@ -1,5 +1,3 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
 #include "ndi-wrapper.h"
 
 extern "C" {

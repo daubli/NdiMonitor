@@ -6,9 +6,13 @@ Android App to view an [NDI®](http://ndi.tv/)-Stream on an Android mobile phone
 
 ### Video Sources
 
-- **Full NDI® Monitoring**  
-  Supports full NDI® sources (⚠️ NDI® HX is **not** supported).  
-  Since NDI® can be network-intensive, using a **USB-C Ethernet adapter** is strongly recommended.
+- **Full NDI® Monitoring**
+    - Supports full NDI® sources (⚠️ NDI® HX is **not** supported).
+    - The following color formats (FourCC) are supported:
+        - **BGRA** (32-bit, 8 bits per channel with Alpha)
+        - **UYVY** (16-bit, 8 bits per channel - no Alpha)
+        - **RGBA** (32-bit, 8 bits per channel with Alpha)
+    - Since NDI® can be network-intensive, using a **USB-C Ethernet adapter** is strongly recommended.
 
 - **UVC HDMI Capture Cards**  
   The app can capture video from **UVC-compatible devices**, such as USB HDMI capture cards.  

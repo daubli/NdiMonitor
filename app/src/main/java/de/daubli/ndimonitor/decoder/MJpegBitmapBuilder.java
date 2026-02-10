@@ -1,89 +1,122 @@
 package de.daubli.ndimonitor.decoder;
 
+import java.nio.ByteBuffer;
+
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.util.Log;
-import io.github.crow_misia.libyuv.ArgbBuffer;
-import io.github.crow_misia.libyuv.FilterMode;
-import io.github.crow_misia.libyuv.I420Buffer;
+import androidx.annotation.Nullable;
 
-import java.nio.ByteBuffer;
+public class MJpegBitmapBuilder {
 
-/*
-    This class is only needed to create bitmaps out of a UVC stream. NDI does never deliver YUY2 Data
- */
-public class MJpegBitmapBuilder extends BitmapBuilder {
+    private static final String TAG = "UvcCapture";
+
+    private ByteBuffer rawData;
+
+    // Reusable scratch for direct buffers (avoids per-frame byte[])
+    private static final ThreadLocal<byte[]> SCRATCH = new ThreadLocal<>();
+
+    // Optional: reuse BitmapFactory.Options object (tiny win)
+    private static final ThreadLocal<BitmapFactory.Options> OPTS = ThreadLocal.withInitial(BitmapFactory.Options::new);
 
     public static MJpegBitmapBuilder builder() {
         return new MJpegBitmapBuilder();
     }
 
-    @Override
+    public MJpegBitmapBuilder withRawData(ByteBuffer buffer) {
+        this.rawData = buffer;
+        return this;
+    }
+
+    @Nullable
     public Bitmap build() {
         if (rawData == null) {
             throw new IllegalStateException("No input data provided.");
         }
-
-        Bitmap unscaledBitmap = decodeMjpeg(this.rawData);
-        this.sourceWidth = unscaledBitmap.getWidth();
-        this.sourceHeight = unscaledBitmap.getHeight();
-
-        if (this.sourceWidth == this.width && this.sourceHeight == this.height) {
-            return unscaledBitmap;
-        }
-
-        ByteBuffer unscaledBuffer = ByteBuffer.allocateDirect(sourceWidth * sourceHeight * 4); // 4 bytes per pixel
-        unscaledBitmap.copyPixelsToBuffer(unscaledBuffer);
-        unscaledBuffer.rewind();
-
-        ArgbBuffer argbBuffer = ArgbBuffer.Factory.wrap(unscaledBuffer, sourceWidth, sourceHeight);
-        unscaledBuffer.clear();
-
-        I420Buffer i420Buffer = I420Buffer.Factory.allocate(this.sourceWidth, this.sourceHeight);
-        argbBuffer.convertTo(i420Buffer);
-        argbBuffer.close();
-
-        I420Buffer scaledBuffer = I420Buffer.Factory.allocate(width, height);
-        i420Buffer.scale(scaledBuffer, FilterMode.LINEAR);
-        i420Buffer.close();
-
-        ArgbBuffer scaledArgbBuffer = ArgbBuffer.Factory.allocate(width, height);
-        scaledBuffer.convertTo(scaledArgbBuffer);
-        scaledBuffer.close();
-
-        Bitmap bitmap = buildBitmapFromArgbBuffer(scaledArgbBuffer);
-        argbBuffer.close();
-
-        return bitmap;
+        return decodeMjpeg(rawData);
     }
 
     private Bitmap decodeMjpeg(ByteBuffer buffer) {
-        if (buffer == null || !buffer.hasRemaining()) return null;
-
-        // ByteBuffer → byte[]
-        byte[] data = new byte[buffer.remaining()];
-        buffer.get(data);
-
-        // Start & Ende des JPEG im ByteArray suchen
-        int start = findJpegSOI(data);
-        int end = findJpegEOI(data);
-
-        if (start >= 0 && end > start) {
-            int length = end - start + 2;
-            try {
-                return BitmapFactory.decodeByteArray(data, start, length);
-            } catch (Exception e) {
-                Log.e("UvcCapture", "JPEG decode failed", e);
-            }
+        if (!buffer.hasRemaining()) {
+            return null;
         }
 
-        Log.e("UvcCapture", "Could not find valid JPEG segment in ByteBuffer");
+        // Don't consume caller's position
+        ByteBuffer b = buffer.duplicate();
+
+        if (b.hasArray()) {
+            int base = b.arrayOffset();
+            int off = base + b.position();
+            int len = b.remaining();
+
+            Bitmap bmp = tryDecode(b.array(), off, len);
+            if (bmp != null) {
+                return bmp;
+            }
+
+            int start = findJpegSOI(b.array(), off, len);
+            int end = findJpegEOI(b.array(), off, len);
+            if (start >= 0 && end > start) {
+                return tryDecode(b.array(), start, (end - start) + 2);
+            }
+
+            Log.e(TAG, "Could not find valid JPEG segment in array-backed buffer");
+            return null;
+        }
+
+        // Direct / non-array buffer: copy into reusable scratch
+        int len = b.remaining();
+        byte[] data = getScratch(len);
+        b.get(data, 0, len);
+
+        Bitmap bmp = tryDecode(data, 0, len);
+        if (bmp != null) {
+            return bmp;
+        }
+
+        int start = findJpegSOI(data, 0, len);
+        int end = findJpegEOI(data, 0, len);
+        if (start >= 0 && end > start) {
+            return tryDecode(data, start, (end - start) + 2);
+        }
+
+        Log.e(TAG, "Could not find valid JPEG segment in direct buffer");
         return null;
     }
 
+    private static Bitmap tryDecode(byte[] data, int off, int len) {
+        try {
+            // If you want downscaling, set inSampleSize here via OPTS.get().
+            // For now, keep defaults.
+            return BitmapFactory.decodeByteArray(data, off, len);
+        } catch (Throwable t) {
+            // decodeByteArray usually returns null on failure, but be defensive.
+            Log.e(TAG, "JPEG decode failed", t);
+            return null;
+        }
+    }
 
-    private int findJpegSOI(byte[] data) {
-        for (int i = 0; i < data.length - 1; i++) {
+    private static byte[] getScratch(int needed) {
+        byte[] s = SCRATCH.get();
+        if (s == null || s.length < needed) {
+            int newSize = roundUpPow2(needed);
+            s = new byte[newSize];
+            SCRATCH.set(s);
+        }
+        return s;
+    }
+
+    private static int roundUpPow2(int x) {
+        int v = 1;
+        while (v < x) {
+            v <<= 1;
+        }
+        return v;
+    }
+
+    private static int findJpegSOI(byte[] data, int off, int len) {
+        int end = off + len - 1;
+        for (int i = off; i < end; i++) {
             if ((data[i] & 0xFF) == 0xFF && (data[i + 1] & 0xFF) == 0xD8) {
                 return i;
             }
@@ -91,8 +124,8 @@ public class MJpegBitmapBuilder extends BitmapBuilder {
         return -1;
     }
 
-    private int findJpegEOI(byte[] data) {
-        for (int i = data.length - 2; i >= 0; i--) {
+    private static int findJpegEOI(byte[] data, int off, int len) {
+        for (int i = off + len - 2; i >= off; i--) {
             if ((data[i] & 0xFF) == 0xFF && (data[i + 1] & 0xFF) == 0xD9) {
                 return i;
             }

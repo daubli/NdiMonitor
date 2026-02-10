@@ -1,37 +1,29 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
 package de.daubli.ndimonitor.ndi;
 
 import de.daubli.ndimonitor.sources.VideoSource;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-
 public class NdiSource implements VideoSource {
 
-    private final AtomicBoolean isClosed;
+    private final String name;
 
-    final long instancePointer;
+    private final String urlAddress;
 
-    public NdiSource(long pointer) {
-        this.isClosed = new AtomicBoolean(false);
-        this.instancePointer = pointer;
+    public NdiSource(String name, String urlAddress) {
+        this.name = name == null ? "" : name;
+        this.urlAddress = urlAddress == null ? "" : urlAddress;
     }
 
     @Override
     public String getSourceName() {
-        if (isClosed.get()) {
-            throw new IllegalStateException("Cannot read source name. Source seems to be closed.");
-        }
-
-        return getSourceName(instancePointer);
+        return name;
     }
 
+    public String getUrlAddress() {
+        return urlAddress;
+    }
+
+    // No native close needed anymore
     public void close() {
-        deallocSource(instancePointer);
-        isClosed.set(true);
+        // no-op
     }
-
-    private static native void deallocSource(long instancePointer);
-
-    private static native String getSourceName(long instancePointer);
 }

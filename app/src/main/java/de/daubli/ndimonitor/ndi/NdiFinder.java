@@ -1,5 +1,3 @@
-// Based on code from https://github.com/WalkerKnapp/devolay (Apache 2.0).
-
 package de.daubli.ndimonitor.ndi;
 
 import java.util.Arrays;
@@ -7,11 +5,17 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class NdiFinder {
+
     private static final Logger LOG = Logger.getLogger(NdiFinder.class.getSimpleName());
+
     private final boolean showLocalSources;
+
     private final String groups;
+
     private final String extraIps;
-    private long instancePointer; // no longer final
+
+    private long instancePointer;
+
     private NdiSource[] previouslyQueriedSources;
 
     public NdiFinder(boolean showLocalSources, String groups, String extraIps) {
@@ -33,7 +37,11 @@ public class NdiFinder {
     }
 
     public NdiSource getFromQueriedSources(String name) throws IllegalArgumentException {
-        return Arrays.stream(previouslyQueriedSources).filter(ndiSource -> name.equals(ndiSource.getSourceName())).findFirst().orElseThrow(() -> new IllegalArgumentException("Position is faulty"));
+        if (previouslyQueriedSources == null) {
+            throw new IllegalArgumentException("No previously queried sources available");
+        }
+        return Arrays.stream(previouslyQueriedSources).filter(ndiSource -> name.equals(ndiSource.getSourceName()))
+                .findFirst().orElseThrow(() -> new IllegalArgumentException("Source not found: " + name));
     }
 
     public synchronized NdiSource[] getCurrentSources() {
@@ -41,32 +49,45 @@ public class NdiFinder {
             initNewFinderInstance();
         }
 
-        closePreviouslyQueriedSources();
+        // IMPORTANT: no native pointers anymore -> no need to close/dealloc per refresh
+        // previouslyQueriedSources can just be replaced
+
         try {
-            long[] currentSources = findGetCurrentSources(instancePointer);
-            NdiSource[] currentNdiSources = new NdiSource[currentSources.length];
-            for (int i = 0; i < currentSources.length; i++) {
-                currentNdiSources[i] = new NdiSource(currentSources[i]);
+            // packed = [name0, url0, name1, url1, ...]
+            String[] packed = findGetCurrentSources(instancePointer);
+
+            if (packed == null || packed.length == 0) {
+                this.previouslyQueriedSources = new NdiSource[] {};
+                return this.previouslyQueriedSources;
             }
+
+            if ((packed.length & 1) != 0) {
+                throw new RuntimeException(
+                        "Native returned malformed packed sources array (odd length): " + packed.length);
+            }
+
+            int count = packed.length / 2;
+            NdiSource[] currentNdiSources = new NdiSource[count];
+
+            for (int i = 0; i < count; i++) {
+                String name = packed[2 * i];
+                String url = packed[2 * i + 1];
+                currentNdiSources[i] = new NdiSource(name, url);
+            }
+
             this.previouslyQueriedSources = currentNdiSources;
             return currentNdiSources;
-        } catch (RuntimeException rte) {
-            LOG.log(Level.WARNING, rte.getMessage());
-            return new NdiSource[]{};
-        }
-    }
 
-    private void closePreviouslyQueriedSources() {
-        if (previouslyQueriedSources != null) {
-            for (NdiSource prev : previouslyQueriedSources) {
-                prev.close();
-            }
-            previouslyQueriedSources = null;
+        } catch (RuntimeException rte) {
+            LOG.log(Level.WARNING, rte.getMessage(), rte);
+            return new NdiSource[] {};
         }
     }
 
     public synchronized void close() {
-        closePreviouslyQueriedSources();
+        // Nothing per-source to close anymore
+        previouslyQueriedSources = null;
+
         if (instancePointer != 0) {
             findDestroy(instancePointer);
             instancePointer = 0;
@@ -84,5 +105,6 @@ public class NdiFinder {
 
     private native long findCreate(boolean showLocalSources, String groups, String extraIps);
 
-    private native long[] findGetCurrentSources(long finderPtr);
+    // CHANGED: was long[]
+    private native String[] findGetCurrentSources(long finderPtr);
 }
