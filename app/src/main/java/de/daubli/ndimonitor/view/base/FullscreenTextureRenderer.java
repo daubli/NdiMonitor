@@ -24,7 +24,7 @@ public class FullscreenTextureRenderer {
 
     private static FloatBuffer texBuffer;
 
-    static {
+    public static void init() {
         vertexBuffer = ByteBuffer.allocateDirect(VERTICES.length * 4).order(ByteOrder.nativeOrder()).asFloatBuffer();
         vertexBuffer.put(VERTICES).position(0);
 
@@ -46,6 +46,10 @@ public class FullscreenTextureRenderer {
     }
 
     public static void drawTexture(int textureId) {
+        if (program == 0) {
+            init();
+        }
+
         GLES20.glUseProgram(program);
 
         GLES20.glEnableVertexAttribArray(posHandle);

@@ -39,6 +39,7 @@ public class CompositeGLRenderer implements GLSurfaceView.Renderer {
     @Override
     public void onSurfaceCreated(GL10 gl, javax.microedition.khronos.egl.EGLConfig config) {
         baseRenderer.onSurfaceCreated(gl, config);
+        FullscreenTextureRenderer.init();
     }
 
     @Override
